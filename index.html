@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Bacteria Become Resistant — Introduction</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+  :root {
+    --green: #1D9E75; --green-dark: #085041; --green-light: #E1F5EE;
+    --red: #C0392B; --amber: #d97706;
+    --navy: #1a2744; --navy-mid: #2c3d6b;
+    --gold: #f0c040;
+    --text: #1e1d1a; --muted: #6b6960;
+    --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--navy);
+    color: #f0eeea;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--navy-mid);
+    border-bottom: 2px solid var(--gold);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  header h1 { font-family: var(--mono); font-size: 14px; color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase; }
+  .nav-btns { display: flex; gap: 10px; }
+  .nav-btn {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s;
+  }
+  .nav-btn.primary { background: var(--green); color: white; }
+  .nav-btn.primary:hover { background: var(--green-dark); }
+  .nav-btn.ghost { background: none; border: 1.5px solid #4a6090; color: #a8b4d4; }
+  .nav-btn.ghost:hover { border-color: #a8b4d4; color: white; }
+
+  main { width: 100%; max-width: 880px; padding: 32px 24px 60px; }
+
+  /* PROGRESS DOTS */
+  .progress {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin-bottom: 28px;
+  }
+  .prog-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #2a3a60; transition: all 0.3s; cursor: pointer;
+  }
+  .prog-dot.active { background: var(--gold); transform: scale(1.3); }
+  .prog-dot.done   { background: var(--green); }
+  .prog-label {
+    font-family: var(--mono); font-size: 11px; color: #6a7da8;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin: 0 6px;
+  }
+
+  /* SLIDE CARD */
+  .slide-card {
+    background: #f7f6f2; border-radius: 14px;
+    color: var(--text); overflow: hidden;
+    display: none;
+  }
+  .slide-card.active { display: block; animation: fade-in 0.4s ease; }
+  @keyframes fade-in { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  .slide-visual {
+    background: #1a2744;
+    padding: 32px 24px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    min-height: 320px; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+
+  .slide-text {
+    padding: 24px 28px;
+  }
+  .slide-num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .slide-heading { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .slide-body {
+    font-size: 14.5px; line-height: 1.75; color: #3a3835;
+  }
+  .slide-body strong { color: var(--green-dark); }
+  .slide-body em { color: var(--amber); font-style: normal; font-weight: 500; }
+
+  .key-concept {
+    margin-top: 16px; padding: 12px 16px;
+    background: var(--green-light); border-left: 4px solid var(--green);
+    border-radius: 6px; font-size: 13.5px; color: #0a4030; line-height: 1.6;
+  }
+  .key-concept strong { color: var(--green-dark); }
+
+  /* NAV ROW */
+  .slide-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px; border-top: 1px solid #e0ddd8;
+    background: #f0eeea;
+  }
+
+  /* ── SVG BACTERIA STYLES ── */
+  .bacteria-stage {
+    display: flex; align-items: center; justify-content: center;
+    gap: 24px; flex-wrap: wrap;
+    padding: 20px;
+  }
+
+  /* Caption under visuals */
+  .stage-caption {
+    font-family: var(--mono); font-size: 11px; color: #8898cc;
+    letter-spacing: 0.04em; text-align: center; margin-top: 4px;
+  }
+
+  /* DNA strand animation */
+  .dna-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+
+  /* Mutation flash */
+  @keyframes mutate-flash {
+    0%,100% { opacity: 0; }
+    20%,80%  { opacity: 1; }
+    50%      { opacity: 0.6; transform: scale(1.4); }
+  }
+  .mutation-burst {
+    position: absolute;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(240,192,64,0.9) 0%, rgba(240,192,64,0) 70%);
+    animation: mutate-flash 1.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Arrow between stages */
+  .stage-arrow {
+    color: #8898cc; font-size: 28px; font-weight: 300;
+    flex-shrink: 0;
+  }
+
+  /* Antibiotic rain on slide 4 */
+  .ab-container { position: relative; width: 320px; height: 220px; }
+  .ab-drop {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(192,57,43,0.7);
+    animation: ab-fall 1.2s ease-in infinite;
+  }
+  @keyframes ab-fall {
+    0%   { transform: translateY(-20px); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translateY(220px); opacity: 0; }
+  }
+
+  /* Fitness comparison slide */
+  .fitness-bars { display:flex; gap:24px; align-items:flex-end; margin-top:12px; }
+  .fitness-bar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .fitness-bar {
+    width: 60px; border-radius: 6px 6px 0 0;
+    transition: height 0.8s ease;
+  }
+  .fitness-bar-label { font-family:var(--mono); font-size:11px; color:#8898cc; text-align:center; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🦠 How Bacteria Become Resistant</h1>
+  <div class="nav-btns">
+    <button class="nav-btn ghost" onclick="history.back()">← Back</button>
+    <button class="nav-btn primary" onclick="window.location.href='L113_Simulation.html'">Go to Simulation →</button>
+  </div>
+</header>
+
+<main>
+
+  <div class="progress" id="progress-bar"></div>
+
+  <!-- ═══ SLIDE 1: What is a bacterium? ═══ -->
+  <div class="slide-card active" id="slide-0">
+    <div class="slide-visual">
+      <div class="bacteria-stage">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg width="130" height="130" viewBox="0 0 130 130">
+            <!-- Body -->
+            <ellipse cx="65" cy="65" rx="48" ry="32" fill="#1D9E75" stroke="#085041" stroke-width="2.5"/>
+            <!-- Hairs (pili) -->
+            <g stroke="#085041" stroke-width="1.5" stroke-linecap="round" fill="none">
+              <path d="M20,58 Q10,48 14,40"/>
+              <path d="M25,72 Q12,72 10,62"/>
+              <path d="M32,80 Q22,88 20,80"/>
+              <path d="M108,55 Q120,46 116,38"/>
+              <path d="M108,68 Q122,68 120,58"/>
+              <path d="M100,80 Q112,86 110,76"/>
+              <path d="M50,35 Q50,22 42,20"/>
+              <path d="M65,33 Q65,18 58,16"/>
+              <path d="M80,35 Q82,22 88,20"/>
+              <path d="M50,97 Q48,110 40,112"/>
+              <path d="M65,97 Q65,112 58,114"/>
+              <path d="M80,97 Q84,110 90,112"/>
+            </g>
+            <!-- Nucleus (nucleoid) -->
+            <ellipse cx="65" cy="65" rx="20" ry="13" fill="#085041" opacity="0.6"/>
+            <!-- DNA squiggle inside nucleus -->
+            <path d="M50,65 Q55,58 60,65 Q65,72 70,65 Q75,58 80,65" stroke="#1D9E75" stroke-width="1.5" fill="none" opacity="0.9"/>
+            <!-- Ribosomes (dots) -->
+            <circle cx="40" cy="58" r="3" fill="#0a5c42" opacity="0.7"/>
+            <circle cx="90" cy="58" r="3" fill="#0a5c42" opacity="0.7"/>
+            <circle cx="42" cy="72" r="3" fill="#0a5c42" opacity="0.7"/>
+            <circle cx="88" cy="72" r="3" fill="#0a5c42" opacity="0.7"/>
+            <circle cx="65" cy="52" r="2.5" fill="#0a5c42" opacity="0.7"/>
+          </svg>
+          <div class="stage-caption">Staphylococcus aureus</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 1 of 6</div>
+      <div class="slide-heading">Meet <em>Staphylococcus aureus</em></div>
+      <div class="slide-body">
+        <em>Staphylococcus aureus</em> is a bacterium that lives on human skin and in nasal passages. It's usually harmless — but if it gets into a wound or the bloodstream, it can cause serious infection.<br><br>
+        Like all bacteria, <em>Staph</em> is a <strong>prokaryote</strong> — no true nucleus, just a circular chromosome floating in the cytoplasm. It has <strong>pili</strong> (hair-like projections) and reproduces by <strong>binary fission</strong>: one cell splits into two.<br><br>
+        In 1945, penicillin became widely available. It was a miracle drug. But <em>Staph</em> had a trick.
+      </div>
+    </div>
+    <div class="slide-nav">
+      <span></span>
+      <button class="nav-btn primary" onclick="goSlide(1)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 2: DNA and random mutation ═══ -->
+  <div class="slide-card" id="slide-1">
+    <div class="slide-visual">
+      <div class="bacteria-stage" style="gap:40px;">
+        <!-- Normal bacterium -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg width="110" height="110" viewBox="0 0 130 130">
+            <ellipse cx="65" cy="65" rx="48" ry="32" fill="#1D9E75" stroke="#085041" stroke-width="2.5"/>
+            <g stroke="#085041" stroke-width="1.5" stroke-linecap="round" fill="none">
+              <path d="M20,58 Q10,48 14,40"/><path d="M25,72 Q12,72 10,62"/>
+              <path d="M108,55 Q120,46 116,38"/><path d="M108,68 Q122,68 120,58"/>
+              <path d="M50,35 Q50,22 42,20"/><path d="M80,35 Q82,22 88,20"/>
+              <path d="M50,97 Q48,110 40,112"/><path d="M80,97 Q84,110 90,112"/>
+            </g>
+            <ellipse cx="65" cy="65" rx="20" ry="13" fill="#085041" opacity="0.6"/>
+            <path d="M50,65 Q55,58 60,65 Q65,72 70,65 Q75,58 80,65" stroke="#1D9E75" stroke-width="1.5" fill="none" opacity="0.9"/>
+          </svg>
+          <div class="stage-caption">Normal DNA</div>
+        </div>
+
+        <!-- Arrow + mutation burst -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div class="dna-wrap">
+            <div class="mutation-burst"></div>
+            <svg width="50" height="50" viewBox="0 0 50 50">
+              <text x="25" y="32" text-anchor="middle" font-size="28" fill="#f0c040">⚡</text>
+            </svg>
+          </div>
+          <div class="stage-caption" style="color:var(--gold);">Random<br>copying error</div>
+        </div>
+
+        <!-- Mutant bacterium -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg width="110" height="110" viewBox="0 0 130 130">
+            <ellipse cx="65" cy="65" rx="48" ry="32" fill="#d97706" stroke="#92560a" stroke-width="2.5"/>
+            <g stroke="#92560a" stroke-width="1.5" stroke-linecap="round" fill="none">
+              <path d="M20,58 Q10,48 14,40"/><path d="M25,72 Q12,72 10,62"/>
+              <path d="M108,55 Q120,46 116,38"/><path d="M108,68 Q122,68 120,58"/>
+              <path d="M50,35 Q50,22 42,20"/><path d="M80,35 Q82,22 88,20"/>
+              <path d="M50,97 Q48,110 40,112"/><path d="M80,97 Q84,110 90,112"/>
+            </g>
+            <ellipse cx="65" cy="65" rx="20" ry="13" fill="#92560a" opacity="0.6"/>
+            <!-- Altered DNA squiggle - different shape -->
+            <path d="M50,65 Q58,55 65,65 Q72,75 80,65" stroke="#fef3c7" stroke-width="2" fill="none" opacity="0.95"/>
+            <!-- Star burst on DNA showing mutation point -->
+            <circle cx="65" cy="65" r="5" fill="#f0c040" opacity="0.8"/>
+          </svg>
+          <div class="stage-caption" style="color:var(--amber);">Mutated DNA<br>(resistance gene)</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 2 of 6</div>
+      <div class="slide-heading">A Random Copying Error</div>
+      <div class="slide-body">
+        Every time a bacterium divides, it copies its entire chromosome. <em>Staphylococcus</em> divides every <strong>20–30 minutes</strong> — that's up to 72 copies per day per cell.<br><br>
+        Sometimes the copy contains a <strong>random error</strong> — a mutation. Most mutations are harmful or neutral. But occasionally, a mutation changes a protein in a way that <em>happens to block penicillin</em> from working.<br><br>
+        The bacterium didn't "try" to become resistant. <strong>The mutation was random.</strong> Penicillin didn't cause it. It just happened — and then penicillin made it matter.
+      </div>
+      <div class="key-concept">
+        <strong>Key idea:</strong> Mutations happen by chance during DNA copying. They are random — not directed by the environment. Natural selection acts on mutations that already exist.
+      </div>
+    </div>
+    <div class="slide-nav">
+      <button class="nav-btn ghost" onclick="goSlide(0)">← Back</button>
+      <button class="nav-btn primary" onclick="goSlide(2)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 3: Binary fission — 1 becomes 2 ═══ -->
+  <div class="slide-card" id="slide-2">
+    <div class="slide-visual">
+      <div id="fission-stage" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;">
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center;" id="fission-cells"></div>
+        <div class="stage-caption" id="fission-caption">1 parent cell</div>
+      </div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 3 of 6</div>
+      <div class="slide-heading">Binary Fission: One Cell Becomes Two</div>
+      <div class="slide-body">
+        Bacteria reproduce by <strong>binary fission</strong> — the parent cell duplicates its DNA, elongates, then pinches into two identical daughter cells. The parent is gone. Both daughters carry the <strong>exact same DNA</strong> as the parent.<br><br>
+        This means: if a bacterium has a resistance mutation, <em>both daughters inherit it</em>. If it doesn't, neither will. There's no mixing of genes between parents the way there is in sexual reproduction.<br><br>
+        <strong>This is why resistance spreads so fast</strong> — one resistant cell can become billions in 24 hours, all carrying the same resistance gene.
+      </div>
+      <div class="key-concept">
+        <strong>Key idea:</strong> Binary fission is asexual — offspring are clones of the parent. Resistance is inherited exactly. It can only spread, never dilute.
+      </div>
+    </div>
+    <div class="slide-nav">
+      <button class="nav-btn ghost" onclick="goSlide(1)">← Back</button>
+      <button class="nav-btn primary" onclick="goSlide(3)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 4: Penicillin kills — but not the resistant ones ═══ -->
+  <div class="slide-card" id="slide-3">
+    <div class="slide-visual">
+      <div style="position:relative;width:340px;height:220px;" id="antibiotic-scene">
+        <!-- Falling drops rendered by JS -->
+        <!-- Static bacteria -->
+        <div id="ab-bacteria" style="position:absolute;inset:0;display:flex;flex-wrap:wrap;gap:8px;align-content:center;justify-content:center;padding:20px;"></div>
+      </div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 4 of 6</div>
+      <div class="slide-heading">Penicillin Kills — But Not All</div>
+      <div class="slide-body">
+        Penicillin works by <strong>blocking a protein</strong> that bacteria use to build their cell wall. Without a cell wall, the bacterium bursts and dies.<br><br>
+        The resistance mutation changes that protein slightly, so penicillin <em>can't bind to it</em>. The resistant bacterium builds its wall normally and survives.<br><br>
+        Partially resistant bacteria have <strong>one normal copy and one mutated copy</strong> of the gene. They get partial protection — sometimes enough, sometimes not.
+      </div>
+      <div class="key-concept">
+        <strong>Key idea:</strong> Penicillin is the <strong>selective pressure</strong>. It removes susceptible bacteria from the population. Resistant bacteria survive and reproduce — passing their advantage to all offspring.
+      </div>
+    </div>
+    <div class="slide-nav">
+      <button class="nav-btn ghost" onclick="goSlide(2)">← Back</button>
+      <button class="nav-btn primary" onclick="goSlide(4)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 5: Allele frequency shift over generations ═══ -->
+  <div class="slide-card" id="slide-4">
+    <div class="slide-visual" style="padding:28px 20px;">
+      <div id="gen-timeline" style="width:100%;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 5 of 6</div>
+      <div class="slide-heading">Resistance Allele Frequency Increases Each Generation</div>
+      <div class="slide-body">
+        Each time penicillin is applied, susceptible bacteria die and resistant ones survive. After reproducing, the <strong>proportion of resistant bacteria increases</strong>.<br><br>
+        The bars below show this shift. This is what scientists mean by <strong>"allele frequency"</strong> — the fraction of the population carrying a particular version of a gene.<br><br>
+        Notice that the resistance bar only ever grows. That's the hallmark of <strong>directional natural selection</strong> — one phenotype is consistently favored.
+      </div>
+      <div class="key-concept">
+        <strong>Key idea:</strong> Natural selection changes allele frequencies over generations. With antibiotic pressure, the resistance allele frequency increases every generation — it can never go backwards.
+      </div>
+    </div>
+    <div class="slide-nav">
+      <button class="nav-btn ghost" onclick="goSlide(3)">← Back</button>
+      <button class="nav-btn primary" onclick="goSlide(5)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 6: CFU + Launch ═══ -->
+  <div class="slide-card" id="slide-5">
+    <div class="slide-visual" style="min-height:200px;padding:20px 24px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;width:100%;">
+        <div style="font-family:var(--mono);font-size:18px;color:var(--gold);letter-spacing:0.04em;">BEFORE YOU RUN THE SIMULATION</div>
+        <div style="font-size:13px;color:#a8b4d4;max-width:500px;line-height:1.7;">Answer the two questions below to unlock the simulation. These check that you understand the key concepts you'll be observing.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+          <span style="background:#1f2f54;border:1px solid #344870;border-radius:6px;padding:6px 14px;font-size:12px;color:#c8d4ee;">🟢 Resistant = 100% survive</span>
+          <span style="background:#1f2f54;border:1px solid #344870;border-radius:6px;padding:6px 14px;font-size:12px;color:#c8d4ee;">🟡 Partial = 67% survive</span>
+          <span style="background:#1f2f54;border:1px solid #344870;border-radius:6px;padding:6px 14px;font-size:12px;color:#c8d4ee;">⚪ Susceptible = 20% survive</span>
+        </div>
+      </div>
+    </div>
+    <div class="slide-text">
+      <div class="slide-num">Slide 6 of 6 — Check For Understanding</div>
+      <div class="slide-heading">Answer These Before You Launch</div>
+
+      <!-- Intro CFU Q1 -->
+      <div class="q-block" id="intro-q1-block" style="margin-bottom:14px;border:1.5px solid #dddbd4;border-radius:10px;padding:14px 16px;">
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Question 1 of 2</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.5;">A bacterium that carries the resistance mutation divides by binary fission. What type will BOTH of its daughter cells be?</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="intro-q1-opts">
+          <button onclick="introMC(1,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">A</span>One resistant, one susceptible — it's a 50/50 split.</button>
+          <button onclick="introMC(1,this,true)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">B</span>Both resistant — binary fission produces exact clones of the parent.</button>
+          <button onclick="introMC(1,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">C</span>Both susceptible — the resistance trait is not heritable through asexual reproduction.</button>
+          <button onclick="introMC(1,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">D</span>It depends on whether the antibiotic is present during division.</button>
+        </div>
+        <div id="intro-q1-fb" style="margin-top:10px;padding:9px 13px;border-radius:7px;font-size:13px;line-height:1.6;display:none;"></div>
+      </div>
+
+      <!-- Intro CFU Q2 -->
+      <div class="q-block" id="intro-q2-block" style="margin-bottom:14px;border:1.5px solid #dddbd4;border-radius:10px;padding:14px 16px;">
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Question 2 of 2</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.5;">The mutation that causes penicillin resistance happened because bacteria "tried" to survive. True or false — and why?</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="intro-q2-opts">
+          <button onclick="introMC(2,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">A</span>True — bacteria sense the antibiotic and activate resistance genes to protect themselves.</button>
+          <button onclick="introMC(2,this,true)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">B</span>False — the mutation was a random copying error during DNA replication. Penicillin didn't cause it; it just made it matter by acting as a selective pressure.</button>
+          <button onclick="introMC(2,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">C</span>True — bacteria evolve intentionally when their environment changes.</button>
+          <button onclick="introMC(2,this,false)" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:7px;border:1.5px solid #dddbd4;background:white;cursor:pointer;font-size:13px;color:var(--text);text-align:left;width:100%;font-family:var(--sans);transition:all 0.15s;">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;">D</span>False — bacteria cannot evolve at all; only complex organisms can evolve.</button>
+        </div>
+        <div id="intro-q2-fb" style="margin-top:10px;padding:9px 13px;border-radius:7px;font-size:13px;line-height:1.6;display:none;"></div>
+      </div>
+
+      <div id="intro-launch-wrap" style="display:none;text-align:center;margin-top:8px;">
+        <div style="font-size:13px;color:var(--green-dark);margin-bottom:10px;">✓ Both correct — you're ready. The simulation will show you everything you just learned, happening in real time.</div>
+        <button class="nav-btn primary" onclick="window.location.href='L113_Simulation.html'" style="font-size:14px;padding:12px 32px;">Launch Simulation →</button>
+      </div>
+      <div id="intro-lock-note" style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:8px;">Answer both questions correctly to unlock the simulation →</div>
+    </div>
+    <div class="slide-nav">
+      <button class="nav-btn ghost" onclick="goSlide(4)">← Back</button>
+      <span style="font-size:12px;color:var(--muted);font-style:italic;">Answer the questions above to launch</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const TOTAL_SLIDES = 6;
+let currentSlide = 0;
+
+function buildProgress() {
+  const bar = document.getElementById('progress-bar');
+  bar.innerHTML = '<span class="prog-label">Intro</span>';
+  for (let i = 0; i < TOTAL_SLIDES; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'prog-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goSlide(i);
+    dot.title = `Slide ${i+1}`;
+    bar.appendChild(dot);
+  }
+  bar.innerHTML += '<span class="prog-label">Simulation</span>';
+}
+
+function goSlide(n) {
+  document.getElementById('slide-' + currentSlide).classList.remove('active');
+  document.querySelectorAll('.prog-dot')[currentSlide].classList.remove('active');
+  document.querySelectorAll('.prog-dot')[currentSlide].classList.add('done');
+
+  currentSlide = Math.max(0, Math.min(TOTAL_SLIDES - 1, n));
+
+  document.getElementById('slide-' + currentSlide).classList.add('active');
+  const dots = document.querySelectorAll('.prog-dot');
+  dots.forEach((d,i) => {
+    d.classList.toggle('active', i === currentSlide);
+    if (i < currentSlide) d.classList.add('done');
+  });
+
+  // Trigger slide-specific animations
+  if (currentSlide === 2) startFission();
+  if (currentSlide === 3) startAntibioticScene();
+  if (currentSlide === 4) buildTimeline();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── SLIDE 3: Binary fission animation ──
+function bacteriaSVG(type, size = 90) {
+  const colors = { r: ['#1D9E75','#085041'], p: ['#d97706','#92560a'], s: ['#1D9E75','#085041'] };
+  const fill = type === 'r' ? '#1D9E75' : type === 'p' ? '#d97706' : 'white';
+  const stroke = type === 'r' ? '#085041' : type === 'p' ? '#92560a' : '#1D9E75';
+  const nucleusFill = type === 'r' ? '#085041' : type === 'p' ? '#92560a' : '#1D9E75';
+  const innerStroke = type === 's' ? '#085041' : type === 'r' ? '#1D9E75' : '#fef3c7';
+  const scale = size / 130;
+  return `<svg width="${size}" height="${size*0.8}" viewBox="0 0 130 104" style="overflow:visible;">
+    <g transform="translate(0,0)">
+      <ellipse cx="65" cy="52" rx="48" ry="32" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
+      <g stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" fill="none">
+        <path d="M20,45 Q10,35 14,27"/><path d="M108,42 Q120,33 116,25"/>
+        <path d="M50,22 Q50,9 42,7"/><path d="M80,22 Q82,9 88,7"/>
+        <path d="M50,84 Q48,97 40,99"/><path d="M80,84 Q84,97 90,99"/>
+      </g>
+      <ellipse cx="65" cy="52" rx="20" ry="13" fill="${nucleusFill}" opacity="0.6"/>
+      <path d="M50,52 Q55,45 60,52 Q65,59 70,52 Q75,45 80,52" stroke="${innerStroke}" stroke-width="1.5" fill="none" opacity="0.9"/>
+    </g>
+  </svg>`;
+}
+
+let fissionInterval = null;
+function startFission() {
+  if (fissionInterval) { clearInterval(fissionInterval); fissionInterval = null; }
+  const container = document.getElementById('fission-cells');
+  const caption = document.getElementById('fission-caption');
+  let fissionStep = 0;
+
+  const steps = [
+    { cells: ['r'], caption: '1 resistant parent cell' },
+    { cells: ['r'], caption: 'DNA duplicates inside...', elongate: true },
+    { cells: ['r','r'], caption: '→ Pinches in two → 2 identical daughter cells', isNew: true },
+    { cells: ['r','r','r','r'], caption: 'Each daughter divides again → 4 cells', isNew: true },
+    { cells: Array(8).fill('r'), caption: '→ 8 cells. All resistant. All identical.', isNew: true },
+  ];
+
+  function render() {
+    const s = steps[fissionStep];
+    container.innerHTML = '';
+    s.cells.forEach((type, i) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = `display:inline-block; transition:all 0.4s;${s.isNew ? 'animation:pop-in-f 0.4s ease both;animation-delay:'+(i*60)+'ms' : ''}`;
+      wrap.innerHTML = bacteriaSVG(type, s.elongate ? 110 : 80);
+      container.appendChild(wrap);
+    });
+    caption.textContent = s.caption;
+    fissionStep = (fissionStep + 1) % steps.length;
+  }
+
+  render();
+  fissionInterval = setInterval(render, 1800);
+}
+
+// ── SLIDE 4: Antibiotic rain scene ──
+let abInterval = null;
+function startAntibioticScene() {
+  const scene = document.getElementById('antibiotic-scene');
+  const bactContainer = document.getElementById('ab-bacteria');
+  bactContainer.innerHTML = '';
+
+  // Draw a mix: mostly susceptible, 1 partial, 1 resistant
+  const types = ['s','s','s','s','s','s','p','s','s','r','s','s'];
+  types.forEach(t => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:inline-block;position:relative;';
+    wrap.innerHTML = bacteriaSVG(t, 50);
+    bactContainer.appendChild(wrap);
+  });
+
+  // Spawn antibiotic drops
+  function spawnDrop() {
+    const drop = document.createElement('div');
+    drop.className = 'ab-drop';
+    drop.style.cssText = `left:${Math.random()*320}px;top:-10px;animation-delay:0s;animation-duration:${0.9+Math.random()*0.6}s;`;
+    scene.appendChild(drop);
+    setTimeout(() => drop.remove(), 1600);
+  }
+
+  if (abInterval) clearInterval(abInterval);
+  abInterval = setInterval(spawnDrop, 120);
+  // Stop after 4s
+  setTimeout(() => { if(abInterval){ clearInterval(abInterval); abInterval=null; } }, 4000);
+}
+
+// ── SLIDE 5: Generation timeline bars ──
+function buildTimeline() {
+  const container = document.getElementById('gen-timeline');
+  container.innerHTML = '';
+  const gens = [
+    { label:'Gen 0', r:7, p:13, s:80 },
+    { label:'Gen 1', r:40, p:22, s:38 },
+    { label:'Gen 2', r:65, p:18, s:17 },
+    { label:'Gen 3', r:80, p:12, s:8 },
+    { label:'Gen 4', r:90, p:7,  s:3 },
+    { label:'Gen 5', r:96, p:3,  s:1 },
+  ];
+  gens.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    row.innerHTML = `
+      <span style="font-family:var(--mono);font-size:11px;color:#8898cc;width:44px;flex-shrink:0;">${g.label}</span>
+      <div style="flex:1;height:22px;border-radius:4px;overflow:hidden;display:flex;background:#2a3a60;">
+        <div style="width:0%;background:#1D9E75;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:white;transition:width 0.8s ${i*0.12}s ease;overflow:hidden;white-space:nowrap;" data-w="${g.r}"></div>
+        <div style="width:0%;background:#d97706;height:100%;transition:width 0.8s ${i*0.12+0.1}s ease;" data-w="${g.p}"></div>
+        <div style="width:0%;background:#4a5a7a;height:100%;transition:width 0.8s ${i*0.12+0.2}s ease;" data-w="${g.s}"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;color:#1D9E75;width:36px;flex-shrink:0;">${g.r+g.p}%R</span>`;
+    container.appendChild(row);
+  });
+  // Trigger animation after brief delay
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    container.querySelectorAll('[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }));
+}
+
+// CSS for fission pop-in
+const style = document.createElement('style');
+style.textContent = `@keyframes pop-in-f { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }`;
+document.head.appendChild(style);
+
+// ── INTRO CFU ──
+let introAnswered = { 1: false, 2: false };
+
+function introMC(qNum, btn, correct) {
+  if (introAnswered[qNum]) return;
+  const opts = btn.closest('div').querySelectorAll('button');
+  const fb = document.getElementById(`intro-q${qNum}-fb`);
+  opts.forEach(o => { o.disabled = true; o.style.cursor = 'default'; });
+
+  if (correct) {
+    btn.style.borderColor = 'var(--green)';
+    btn.style.background = 'var(--green-light)';
+    btn.style.color = 'var(--green-dark)';
+    btn.style.fontWeight = '600';
+    fb.style.cssText = 'display:block;background:var(--green-light);border-left:3px solid var(--green);color:#0a4030;margin-top:10px;padding:9px 13px;border-radius:7px;font-size:13px;line-height:1.6;';
+    if (qNum===1) fb.innerHTML = '✓ Correct. Binary fission produces exact clones — both daughters inherit the parent\'s resistance allele. This is why resistance spreads so efficiently: every resistant cell becomes two.';
+    if (qNum===2) fb.innerHTML = '✓ Correct. Mutations are random copying errors — not intentional responses. Natural selection acts on mutations that already exist. The antibiotic didn\'t create resistance; it selected for it.';
+  } else {
+    btn.style.borderColor = 'var(--red)';
+    btn.style.background = '#fde8e8';
+    btn.style.opacity = '0.65';
+    btn.style.textDecoration = 'line-through';
+    // Reveal correct
+    opts.forEach(o => {
+      if (o.getAttribute('onclick').includes(',true)')) {
+        o.style.borderColor = 'var(--green)';
+        o.style.background = 'var(--green-light)';
+        o.style.color = 'var(--green-dark)';
+        o.style.fontWeight = '600';
+      }
+    });
+    fb.style.cssText = 'display:block;background:#fff8dc;border-left:3px solid var(--gold);color:#5a3700;margin-top:10px;padding:9px 13px;border-radius:7px;font-size:13px;line-height:1.6;';
+    if (qNum===1) fb.innerHTML = '💡 Remember: binary fission = exact clone every time. The correct answer is highlighted above.';
+    if (qNum===2) fb.innerHTML = '💡 Mutations are always random — bacteria cannot sense or direct them. The correct answer is highlighted above.';
+  }
+  introAnswered[qNum] = true;
+  checkIntroReady();
+}
+
+function checkIntroReady() {
+  if (introAnswered[1] && introAnswered[2]) {
+    document.getElementById('intro-launch-wrap').style.display = 'block';
+    document.getElementById('intro-lock-note').style.display = 'none';
+    document.getElementById('intro-launch-wrap').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+}
+
+buildProgress();
+</script>
+</body>
+</html>

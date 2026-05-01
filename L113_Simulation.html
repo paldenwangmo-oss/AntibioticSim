@@ -1,0 +1,2395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Natural Selection Simulator — Penicillin Resistance</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --green: #1D9E75;
+    --green-dark: #085041;
+    --green-light: #E1F5EE;
+    --red: #C0392B;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --navy: #1a2744;
+    --navy-mid: #2c3d6b;
+    --gold: #f0c040;
+    --off-white: #f7f6f2;
+    --border: #dddbd4;
+    --text: #1e1d1a;
+    --muted: #6b6960;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--navy);
+    color: var(--off-white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--navy-mid);
+    border-bottom: 2px solid var(--gold);
+    padding: 14px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  header p { font-size: 13px; color: #a8b4d4; }
+
+  .mode-bar {
+    width: 100%;
+    background: #141e38;
+    display: flex;
+    padding: 0 32px;
+    border-bottom: 1px solid #2a3a60;
+    flex-wrap: wrap;
+  }
+  .mode-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 11px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6a7da8;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .mode-btn:hover { color: #c0cbe8; }
+  .mode-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  main {
+    width: 100%;
+    max-width: 1080px;
+    padding: 22px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* SCENARIO */
+  .scenario {
+    background: #1f2f54;
+    border: 1px solid #344870;
+    border-left: 4px solid var(--gold);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #c8d4ee;
+  }
+  .scenario strong { color: var(--gold); }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 16px;
+    background: #f0eeea;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12.5px;
+  }
+  .legend-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  /* MAIN CARD */
+  .gen-card {
+    background: #f7f6f2;
+    border-radius: 10px;
+    padding: 18px 20px;
+    color: var(--text);
+  }
+  .gen-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .gen-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .gen-title { font-size: 16px; font-weight: 600; color: var(--text); margin-top: 3px; }
+
+  .gen-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .chip-r  { background: var(--green-light); color: var(--green-dark); }
+  .chip-p  { background: var(--amber-light); color: var(--amber); }
+  .chip-s  { background: #f0f0f0; color: #555; }
+  .chip-t  { background: #e8e8e8; color: #333; }
+
+  /* PETRI */
+  .petri-outer {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    min-height: 100px;
+    position: relative;
+  }
+
+  /* Phase label overlay */
+  .phase-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    text-transform: uppercase;
+  }
+  .phase-overlay.killing {
+    background: rgba(192,57,43,0.10);
+    color: var(--red);
+    opacity: 1;
+  }
+  .phase-overlay.dividing {
+    background: rgba(29,158,117,0.08);
+    color: var(--green-dark);
+    opacity: 1;
+  }
+
+  .petri-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-content: flex-start;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* CELL */
+  .cell-wrap {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .cell-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  /* Animations */
+  @keyframes cell-die {
+    0%   { transform: scale(1); opacity: 1; }
+    40%  { transform: scale(1.12); opacity: 0.8; }
+    100% { transform: scale(0.85); opacity: 0.2; }
+  }
+  @keyframes cell-upgrade {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.3); filter: brightness(1.4); }
+    60%  { transform: scale(0.9); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  @keyframes pop-in {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.12); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes pre-divide {
+    0%   { transform: scale(1); opacity: 1; }
+    35%  { transform: scale(1.2); opacity: 1; }
+    65%  { transform: scaleX(1.3) scaleY(0.78); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  .cell-wrap.anim-die      { animation: cell-die     0.6s ease forwards; }
+  .cell-wrap.anim-upgrade  { animation: cell-upgrade  0.6s ease forwards; }
+  .cell-wrap.anim-popin    { animation: pop-in        0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .cell-wrap.anim-prediv   { animation: pre-divide    0.55s ease-in forwards; }
+
+  /* Daughter cells flying apart */
+  .daughter {
+    position: absolute;
+    width: 44px; height: 44px;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .daughter svg { width: 100%; height: 100%; overflow: visible; }
+  @keyframes daughter-fly {
+    0%   { transform: translate(0,0) scale(0.55); opacity: 0.8; }
+    100% { transform: translate(var(--tx),var(--ty)) scale(1); opacity: 1; }
+  }
+  .daughter.fly { animation: daughter-fly 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+  /* Antibiotic spray overlay */
+  .spray-dot {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 5;
+    background: rgba(192,57,43,0.55);
+    animation: spray-land 0.5s ease forwards;
+  }
+  @keyframes spray-land {
+    0%   { transform: scale(0); opacity: 0.9; }
+    60%  { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
+  /* FREQ BAR */
+  .freq-section { margin-top: 12px; }
+  .freq-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .freq-bar-wrap {
+    height: 24px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    background: #e8e8e4;
+    border: 1px solid var(--border);
+  }
+  .freq-seg {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: white;
+    transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .freq-seg.fr { background: var(--green); }
+  .freq-seg.fp { background: var(--amber); }
+  .freq-seg.fs { background: #b0ada5; color: #333; }
+
+  /* INSIGHT */
+  .insight {
+    background: var(--green-light);
+    border: 1px solid #9fe1cb;
+    border-left: 4px solid var(--green);
+    border-radius: 8px;
+    padding: 13px 17px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #0a4030;
+    display: none;
+    margin-top: 12px;
+  }
+  .insight.show { display: block; animation: slide-in 0.3s ease; }
+  @keyframes slide-in {
+    from { opacity:0; transform:translateY(-5px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .insight strong { color: var(--green-dark); }
+
+  /* CONTROLS */
+  .controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--green); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+  .btn-primary:disabled { background: #a0cbbf; cursor: not-allowed; }
+  .btn-reset { background:none; border:1.5px solid #c0c0b4; color:var(--muted); }
+  .btn-reset:hover { border-color:var(--text); color:var(--text); }
+  .step-note { font-size:12px; color:var(--muted); font-style:italic; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 2px solid var(--border);
+    background: #f0eeea;
+  }
+  th:first-child { text-align:left; }
+  td {
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 500;
+  }
+  td:first-child { text-align:left; font-size:12px; color:var(--muted); font-weight:400; }
+  tr.row-active td { background:#edf9f4; }
+  tr.row-active td:first-child { border-left:3px solid var(--green); }
+  .val-hidden { color:#c8c4bc; font-style:italic; font-size:11px; font-weight:400; }
+  .pct-hi { color:var(--green-dark); font-weight:700; }
+  .pct-lo { color:var(--red); font-weight:600; }
+
+  /* COMPLETE */
+  .complete-banner {
+    background: var(--navy-mid);
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    padding: 18px 22px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .complete-banner.show { display:flex; animation: slide-in 0.4s ease; }
+  .complete-banner h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .complete-banner p { font-size:13.5px; color:#c8d4ee; line-height:1.65; }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6a7da8;
+    margin-bottom: 8px;
+  }
+
+  /* ── QUESTION GATE ── */
+  .q-gate {
+    margin-top: 14px;
+    background: #1f2f54;
+    border: 1.5px solid #344870;
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: none;
+    animation: slide-in 0.3s ease;
+  }
+  .q-gate.show { display: block; }
+  .q-gate-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 8px;
+  }
+  .q-gate-text {
+    font-size: 14px; font-weight: 600; color: #f0eeea;
+    line-height: 1.55; margin-bottom: 12px;
+  }
+  /* MC options */
+  .q-mc { display: flex; flex-direction: column; gap: 7px; }
+  .q-opt {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 13px; border-radius: 7px;
+    border: 1.5px solid #344870; background: #1a2744;
+    cursor: pointer; font-size: 13px; color: #c8d4ee;
+    transition: all 0.15s; text-align: left; width: 100%;
+    font-family: var(--sans);
+  }
+  .q-opt:hover:not(:disabled) { border-color: #6a8fd0; background: #243560; }
+  .q-opt.correct  { border-color: var(--green); background: var(--green-light); color: var(--green-dark); font-weight: 600; }
+  .q-opt.wrong    { border-color: var(--red); background: #2a1a1a; color: #e88; opacity: 0.65; }
+  .q-opt:disabled { cursor: default; }
+  .q-opt-letter { font-family: var(--mono); font-size: 11px; font-weight: 600; min-width: 18px; padding-top: 1px; }
+  /* SA input */
+  .q-sa {
+    width: 100%; min-height: 68px; padding: 10px 12px;
+    background: #1a2744; border: 1.5px solid #344870;
+    border-radius: 7px; font-family: var(--sans); font-size: 13px;
+    color: #f0eeea; resize: vertical; outline: none;
+    transition: border-color 0.15s;
+  }
+  .q-sa:focus { border-color: var(--green); }
+  .q-sa.filled { border-color: var(--green); }
+  .q-sa-submit {
+    margin-top: 8px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 7px 16px; border-radius: 5px; border: none;
+    background: var(--green); color: white; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .q-sa-submit:hover:not(:disabled) { background: var(--green-dark); }
+  .q-sa-submit:disabled { background: #4a8a70; cursor: not-allowed; }
+  /* Feedback */
+  .q-feedback {
+    margin-top: 10px; padding: 9px 13px; border-radius: 7px;
+    font-size: 13px; line-height: 1.6; display: none;
+  }
+  .q-feedback.show { display: block; animation: slide-in 0.25s ease; }
+  .q-feedback.good { background: var(--green-light); border-left: 3px solid var(--green); color: #0a4030; }
+  .q-feedback.hint { background: #fff8dc; border-left: 3px solid var(--gold); color: #5a3700; }
+  /* Unlock nudge */
+  .q-unlock-note {
+    font-family: var(--mono); font-size: 10px; color: #6a7da8;
+    letter-spacing: 0.04em; margin-top: 10px; text-align: right;
+  }
+
+  /* CFU */
+  .cfu-wrap {
+    background: var(--navy-mid); border: 1.5px solid var(--gold);
+    border-radius: 10px; padding: 20px 22px;
+    display: none; flex-direction: column; gap: 16px;
+  }
+  .cfu-wrap.show { display: flex; animation: slide-in 0.4s ease; }
+  .cfu-title {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--gold);
+  }
+  .cfu-sub { font-size: 13px; color: #a8b4d4; }
+  .cfu-q-block {
+    background: #1a2744; border: 1px solid #344870;
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .cfu-q-block.answered { border-color: var(--green); }
+  .cfu-complete-msg {
+    background: #0a4030; border: 1.5px solid var(--green);
+    border-radius: 8px; padding: 14px 16px;
+    font-size: 13.5px; color: #d4f5e5; line-height: 1.65;
+    display: none;
+  }
+  .cfu-complete-msg.show { display: block; animation: slide-in 0.3s ease; }
+
+  @media (max-width:600px) {
+    main { padding:14px 12px 40px; }
+    .cell-wrap { width:28px; height:28px; }
+    header { padding:12px 16px; }
+    .mode-bar { padding:0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Natural Selection Simulator</h1>
+    <p>Biology 1 · Unit 6 · Lesson 113</p>
+  </div>
+</header>
+
+<div class="mode-bar" id="mode-bar" style="display:none;">
+  <button class="mode-btn active" onclick="setMode('bacteria')" id="tab-bacteria">🦠 Bacteria + Penicillin</button>
+  <button class="mode-btn" onclick="setMode('insect')" id="tab-insect">🪲 Insects + Pesticide</button>
+</div>
+
+<main>
+
+  <!-- ══ DEMO PANEL ══ -->
+  <div id="demo-panel">
+    <div class="scenario" style="border-left-color:var(--gold);">
+      <strong style="color:var(--gold);">👀 Watch First — Don't Touch Anything Yet</strong><br>
+      Watch the simulation run automatically through 6 generations. Pay attention to what happens to each type of bacterium and how the allele frequency bar changes. You will make predictions before running it yourself.
+    </div>
+    <div class="gen-card" style="margin-top:14px;">
+      <div class="gen-header">
+        <div>
+          <div class="gen-label" id="demo-gen-label">Demo — Generation 0</div>
+          <div class="gen-title" id="demo-gen-title">Watch what happens to each cell type</div>
+        </div>
+        <div class="gen-stats" id="demo-gen-stats"></div>
+      </div>
+      <div class="petri-outer" id="demo-petri-outer">
+        <div class="phase-overlay" id="demo-phase-overlay"></div>
+        <div class="petri-grid" id="demo-petri-grid"></div>
+      </div>
+      <div class="freq-section">
+        <div class="freq-label">Resistance allele frequency — watch this bar shift each generation</div>
+        <div class="freq-bar-wrap">
+          <div class="freq-seg fr" id="demo-freq-r"></div>
+          <div class="freq-seg fp" id="demo-freq-p"></div>
+          <div class="freq-seg fs" id="demo-freq-s" style="width:100%">susceptible</div>
+        </div>
+      </div>
+      <div class="insight" id="demo-insight" style="margin-top:12px;font-size:13px;"></div>
+    </div>
+    <div style="text-align:center;margin-top:10px;">
+      <span class="step-note" id="demo-status">Starting demo in 1 second...</span>
+    </div>
+  </div>
+
+  <!-- ══ PREDICTION GATE ══ -->
+  <div id="prediction-panel" style="display:none;margin-top:18px;">
+    <div style="background:#1f2f54;border:1.5px solid var(--gold);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:0.07em;text-transform:uppercase;color:var(--gold);">📋 Make Your Predictions Before Running</div>
+      <div style="font-size:14px;color:#c8d4ee;line-height:1.65;">You just watched the demo. Now make two predictions before you run it yourself. Your predictions will be compared to your actual results in the CFU.</div>
+
+      <div class="cfu-q-block" id="pred-q1-block">
+        <div class="q-gate-label">Prediction 1 of 2</div>
+        <div class="q-gate-text">In the demo, resistance became the majority at some point. In YOUR run, predict: how many generations will it take for resistance to exceed 50%? Will it be more or fewer than the demo, and why? (Minimum 20 characters.)</div>
+        <textarea class="q-sa" id="pred-q1-input" placeholder="I predict it will take ___ generations because..." oninput="predCheck(1)"></textarea>
+        <button class="q-sa-submit" id="pred-q1-submit" onclick="predSubmit(1)" disabled>Save Prediction →</button>
+        <div class="q-feedback" id="pred-q1-fb"></div>
+        <div class="q-unlock-note" id="pred-q1-note">Write at least 20 characters →</div>
+      </div>
+
+      <div class="cfu-q-block" id="pred-q2-block">
+        <div class="q-gate-label">Prediction 2 of 2</div>
+        <div class="q-gate-text">The simulation uses random chance — your run will differ from the demo. What do you predict will be the <em>same</em> in every run, and what will be <em>different</em>? (Minimum 20 characters.)</div>
+        <textarea class="q-sa" id="pred-q2-input" placeholder="Same each run: ... Different each run: ..." oninput="predCheck(2)"></textarea>
+        <button class="q-sa-submit" id="pred-q2-submit" onclick="predSubmit(2)" disabled>Save Prediction →</button>
+        <div class="q-feedback" id="pred-q2-fb"></div>
+        <div class="q-unlock-note" id="pred-q2-note">Write at least 20 characters →</div>
+      </div>
+
+      <div id="pred-launch-wrap" style="display:none;text-align:center;padding-top:4px;">
+        <div style="font-size:13px;color:#a0d8c0;margin-bottom:12px;">✓ Both predictions saved. Now run the simulation and see how it compares.</div>
+        <button class="btn btn-primary" onclick="launchStudentRun()" style="font-size:14px;padding:12px 32px;">▶ Run the Simulation →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STUDENT RUN PANEL ══ -->
+  <div id="student-panel" style="display:none;margin-top:18px;">
+    <div class="scenario" id="scenario-box"></div>
+    <div class="legend" id="legend-box"></div>
+
+    <div class="gen-card">
+      <div class="gen-header">
+        <div>
+          <div class="gen-label" id="gen-label">Generation 0</div>
+          <div class="gen-title" id="gen-title">Original population</div>
+        </div>
+        <div class="gen-stats" id="gen-stats"></div>
+      </div>
+      <div class="petri-outer" id="petri-outer">
+        <div class="phase-overlay" id="phase-overlay"></div>
+        <div class="petri-grid" id="petri-grid"></div>
+      </div>
+      <div class="freq-section">
+        <div class="freq-label">Resistance allele frequency</div>
+        <div class="freq-bar-wrap">
+          <div class="freq-seg fr" id="freq-r"></div>
+          <div class="freq-seg fp" id="freq-p"></div>
+          <div class="freq-seg fs" id="freq-s" style="width:100%">susceptible</div>
+        </div>
+      </div>
+      <div class="insight" id="insight-box"></div>
+      <div class="q-gate" id="q-gate"></div>
+      <div class="controls">
+        <button class="btn btn-primary" id="action-btn" onclick="nextStep()"></button>
+        <button class="btn btn-reset" onclick="reset()" disabled>↺ Run Again</button>
+        <span class="step-note" id="step-note"></span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Data Table — record your results each generation</div>
+      <div class="gen-card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Generation</th><th>Total</th><th>🟢 Resistant</th>
+                <th>🟡 Partial</th><th>⚪ Susceptible</th><th>% Carrying resistance allele</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CFU — 4 questions, gates Run Again -->
+    <div class="cfu-wrap" id="cfu-wrap">
+      <div class="cfu-title">✓ Simulation Complete — Check For Understanding</div>
+      <div class="cfu-sub">Answer all four questions to unlock "Run Again." Use what you just observed.</div>
+
+      <div class="cfu-q-block" id="cfu-q1-block">
+        <div class="q-gate-label">CFU 1 of 4</div>
+        <div class="q-gate-text">Even though some susceptible bacteria survived each round, resistance always won. What is the correct explanation?</div>
+        <div class="q-mc" id="cfu-q1-opts">
+          <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">A</span>Resistant bacteria are smarter and learn to avoid the antibiotic.</button>
+          <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">B</span>Susceptible bacteria eventually mutate to become resistant during their lifetime.</button>
+          <button class="q-opt" onclick="cfuMC(1,this,true)"><span class="q-opt-letter">C</span>Resistant bacteria survive and reproduce at a higher rate every generation — their allele accumulates faster than susceptible alleles can recover.</button>
+          <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">D</span>The antibiotic gets weaker over time, making it easier for resistant bacteria to survive.</button>
+        </div>
+        <div class="q-feedback" id="cfu-q1-fb"></div>
+      </div>
+
+      <div class="cfu-q-block" id="cfu-q2-block">
+        <div class="q-gate-label">CFU 2 of 4 — Compare to your prediction</div>
+        <div class="q-gate-text">Look back at your predictions. How accurate were you? What was the same as you predicted? What surprised you? (Minimum 20 characters.)</div>
+        <textarea class="q-sa" id="cfu-q2-input" placeholder="My prediction said... What actually happened... I was surprised by..." oninput="cfuSACheck(2,20,'cfu-q2-submit')"></textarea>
+        <button class="q-sa-submit" id="cfu-q2-submit" onclick="cfuSASubmit(2)" disabled>Submit →</button>
+        <div class="q-feedback" id="cfu-q2-fb"></div>
+      </div>
+
+      <div class="cfu-q-block" id="cfu-q3-block">
+        <div class="q-gate-label">CFU 3 of 4 — MRSA the Superbug</div>
+        <div class="q-gate-text">MRSA is resistant to multiple antibiotics. Based on what the simulation showed you, how could MRSA have evolved resistance to so many different drugs?</div>
+        <div class="q-mc" id="cfu-q3-opts">
+          <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">A</span>MRSA bacteria decided to become resistant because they were exposed to many antibiotics at once.</button>
+          <button class="q-opt" onclick="cfuMC(3,this,true)"><span class="q-opt-letter">B</span>Each new antibiotic created a new selective pressure — bacteria with any mutation conferring resistance survived and reproduced, and the same directional selection repeated for each drug over time.</button>
+          <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">C</span>MRSA inherited multi-drug resistance from other species through sexual reproduction.</button>
+          <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">D</span>Doctors gave bacteria too many antibiotics at once, which forced them to become resistant to all of them simultaneously.</button>
+        </div>
+        <div class="q-feedback" id="cfu-q3-fb"></div>
+      </div>
+
+      <div class="cfu-q-block" id="cfu-q4-block">
+        <div class="q-gate-label">CFU 4 of 4 — What Do We Do Now?</div>
+        <div class="q-gate-text">We now have bacteria resistant to almost every antibiotic we have. Based on the simulation and what you know about natural selection, propose TWO strategies scientists or doctors could use to slow or stop the spread of antibiotic resistance. Explain why each would work using selection pressure language. (Minimum 30 characters.)</div>
+        <textarea class="q-sa" id="cfu-q4-input" placeholder="Strategy 1: ... This would work because the selective pressure...&#10;Strategy 2: ... This would work because..." oninput="cfuSACheck(4,30,'cfu-q4-submit')"></textarea>
+        <button class="q-sa-submit" id="cfu-q4-submit" onclick="cfuSASubmit(4)" disabled>Submit →</button>
+        <div class="q-feedback" id="cfu-q4-fb"></div>
+      </div>
+
+      <div class="cfu-complete-msg" id="cfu-complete-msg">
+        🎉 <strong>All four answered.</strong> You've explained directional selection, connected it to MRSA, and proposed real solutions. Click <strong>↺ Run Again</strong> to observe a different outcome with the same underlying biology.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+YPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Natural Selection Simulator — Penicillin Resistance</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --green: #1D9E75;
+    --green-dark: #085041;
+    --green-light: #E1F5EE;
+    --red: #C0392B;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --navy: #1a2744;
+    --navy-mid: #2c3d6b;
+    --gold: #f0c040;
+    --off-white: #f7f6f2;
+    --border: #dddbd4;
+    --text: #1e1d1a;
+    --muted: #6b6960;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--navy);
+    color: var(--off-white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--navy-mid);
+    border-bottom: 2px solid var(--gold);
+    padding: 14px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  header p { font-size: 13px; color: #a8b4d4; }
+
+  .mode-bar {
+    width: 100%;
+    background: #141e38;
+    display: flex;
+    padding: 0 32px;
+    border-bottom: 1px solid #2a3a60;
+    flex-wrap: wrap;
+  }
+  .mode-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 11px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6a7da8;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .mode-btn:hover { color: #c0cbe8; }
+  .mode-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  main {
+    width: 100%;
+    max-width: 1080px;
+    padding: 22px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* SCENARIO */
+  .scenario {
+    background: #1f2f54;
+    border: 1px solid #344870;
+    border-left: 4px solid var(--gold);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #c8d4ee;
+  }
+  .scenario strong { color: var(--gold); }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 16px;
+    background: #f0eeea;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12.5px;
+  }
+  .legend-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  /* MAIN CARD */
+  .gen-card {
+    background: #f7f6f2;
+    border-radius: 10px;
+    padding: 18px 20px;
+    color: var(--text);
+  }
+  .gen-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .gen-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .gen-title { font-size: 16px; font-weight: 600; color: var(--text); margin-top: 3px; }
+
+  .gen-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .chip-r  { background: var(--green-light); color: var(--green-dark); }
+  .chip-p  { background: var(--amber-light); color: var(--amber); }
+  .chip-s  { background: #f0f0f0; color: #555; }
+  .chip-t  { background: #e8e8e8; color: #333; }
+
+  /* PETRI */
+  .petri-outer {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    min-height: 100px;
+    position: relative;
+  }
+
+  /* Phase label overlay */
+  .phase-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    text-transform: uppercase;
+  }
+  .phase-overlay.killing {
+    background: rgba(192,57,43,0.10);
+    color: var(--red);
+    opacity: 1;
+  }
+  .phase-overlay.dividing {
+    background: rgba(29,158,117,0.08);
+    color: var(--green-dark);
+    opacity: 1;
+  }
+
+  .petri-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-content: flex-start;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* CELL */
+  .cell-wrap {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .cell-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  /* Animations */
+  @keyframes cell-die {
+    0%   { transform: scale(1); opacity: 1; }
+    40%  { transform: scale(1.12); opacity: 0.8; }
+    100% { transform: scale(0.85); opacity: 0.2; }
+  }
+  @keyframes cell-upgrade {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.3); filter: brightness(1.4); }
+    60%  { transform: scale(0.9); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  @keyframes pop-in {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.12); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes pre-divide {
+    0%   { transform: scale(1); opacity: 1; }
+    35%  { transform: scale(1.2); opacity: 1; }
+    65%  { transform: scaleX(1.3) scaleY(0.78); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  .cell-wrap.anim-die      { animation: cell-die     0.6s ease forwards; }
+  .cell-wrap.anim-upgrade  { animation: cell-upgrade  0.6s ease forwards; }
+  .cell-wrap.anim-popin    { animation: pop-in        0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .cell-wrap.anim-prediv   { animation: pre-divide    0.55s ease-in forwards; }
+
+  /* Daughter cells flying apart */
+  .daughter {
+    position: absolute;
+    width: 44px; height: 44px;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .daughter svg { width: 100%; height: 100%; overflow: visible; }
+  @keyframes daughter-fly {
+    0%   { transform: translate(0,0) scale(0.55); opacity: 0.8; }
+    100% { transform: translate(var(--tx),var(--ty)) scale(1); opacity: 1; }
+  }
+  .daughter.fly { animation: daughter-fly 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+  /* Antibiotic spray overlay */
+  .spray-dot {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 5;
+    background: rgba(192,57,43,0.55);
+    animation: spray-land 0.5s ease forwards;
+  }
+  @keyframes spray-land {
+    0%   { transform: scale(0); opacity: 0.9; }
+    60%  { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
+  /* FREQ BAR */
+  .freq-section { margin-top: 12px; }
+  .freq-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .freq-bar-wrap {
+    height: 24px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    background: #e8e8e4;
+    border: 1px solid var(--border);
+  }
+  .freq-seg {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: white;
+    transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .freq-seg.fr { background: var(--green); }
+  .freq-seg.fp { background: var(--amber); }
+  .freq-seg.fs { background: #b0ada5; color: #333; }
+
+  /* INSIGHT */
+  .insight {
+    background: var(--green-light);
+    border: 1px solid #9fe1cb;
+    border-left: 4px solid var(--green);
+    border-radius: 8px;
+    padding: 13px 17px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #0a4030;
+    display: none;
+    margin-top: 12px;
+  }
+  .insight.show { display: block; animation: slide-in 0.3s ease; }
+  @keyframes slide-in {
+    from { opacity:0; transform:translateY(-5px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .insight strong { color: var(--green-dark); }
+
+  /* CONTROLS */
+  .controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--green); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+  .btn-primary:disabled { background: #a0cbbf; cursor: not-allowed; }
+  .btn-reset { background:none; border:1.5px solid #c0c0b4; color:var(--muted); }
+  .btn-reset:hover { border-color:var(--text); color:var(--text); }
+  .step-note { font-size:12px; color:var(--muted); font-style:italic; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 2px solid var(--border);
+    background: #f0eeea;
+  }
+  th:first-child { text-align:left; }
+  td {
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 500;
+  }
+  td:first-child { text-align:left; font-size:12px; color:var(--muted); font-weight:400; }
+  tr.row-active td { background:#edf9f4; }
+  tr.row-active td:first-child { border-left:3px solid var(--green); }
+  .val-hidden { color:#c8c4bc; font-style:italic; font-size:11px; font-weight:400; }
+  .pct-hi { color:var(--green-dark); font-weight:700; }
+  .pct-lo { color:var(--red); font-weight:600; }
+
+  /* COMPLETE */
+  .complete-banner {
+    background: var(--navy-mid);
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    padding: 18px 22px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .complete-banner.show { display:flex; animation: slide-in 0.4s ease; }
+  .complete-banner h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .complete-banner p { font-size:13.5px; color:#c8d4ee; line-height:1.65; }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6a7da8;
+    margin-bottom: 8px;
+  }
+
+  /* ── QUESTION GATE ── */
+  .q-gate {
+    margin-top: 14px;
+    background: #1f2f54;
+    border: 1.5px solid #344870;
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: none;
+    animation: slide-in 0.3s ease;
+  }
+  .q-gate.show { display: block; }
+  .q-gate-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 8px;
+  }
+  .q-gate-text {
+    font-size: 14px; font-weight: 600; color: #f0eeea;
+    line-height: 1.55; margin-bottom: 12px;
+  }
+  /* MC options */
+  .q-mc { display: flex; flex-direction: column; gap: 7px; }
+  .q-opt {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 13px; border-radius: 7px;
+    border: 1.5px solid #344870; background: #1a2744;
+    cursor: pointer; font-size: 13px; color: #c8d4ee;
+    transition: all 0.15s; text-align: left; width: 100%;
+    font-family: var(--sans);
+  }
+  .q-opt:hover:not(:disabled) { border-color: #6a8fd0; background: #243560; }
+  .q-opt.correct  { border-color: var(--green); background: var(--green-light); color: var(--green-dark); font-weight: 600; }
+  .q-opt.wrong    { border-color: var(--red); background: #2a1a1a; color: #e88; opacity: 0.65; }
+  .q-opt:disabled { cursor: default; }
+  .q-opt-letter { font-family: var(--mono); font-size: 11px; font-weight: 600; min-width: 18px; padding-top: 1px; }
+  /* SA input */
+  .q-sa {
+    width: 100%; min-height: 68px; padding: 10px 12px;
+    background: #1a2744; border: 1.5px solid #344870;
+    border-radius: 7px; font-family: var(--sans); font-size: 13px;
+    color: #f0eeea; resize: vertical; outline: none;
+    transition: border-color 0.15s;
+  }
+  .q-sa:focus { border-color: var(--green); }
+  .q-sa.filled { border-color: var(--green); }
+  .q-sa-submit {
+    margin-top: 8px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 7px 16px; border-radius: 5px; border: none;
+    background: var(--green); color: white; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .q-sa-submit:hover:not(:disabled) { background: var(--green-dark); }
+  .q-sa-submit:disabled { background: #4a8a70; cursor: not-allowed; }
+  /* Feedback */
+  .q-feedback {
+    margin-top: 10px; padding: 9px 13px; border-radius: 7px;
+    font-size: 13px; line-height: 1.6; display: none;
+  }
+  .q-feedback.show { display: block; animation: slide-in 0.25s ease; }
+  .q-feedback.good { background: var(--green-light); border-left: 3px solid var(--green); color: #0a4030; }
+  .q-feedback.hint { background: #fff8dc; border-left: 3px solid var(--gold); color: #5a3700; }
+  /* Unlock nudge */
+  .q-unlock-note {
+    font-family: var(--mono); font-size: 10px; color: #6a7da8;
+    letter-spacing: 0.04em; margin-top: 10px; text-align: right;
+  }
+
+  /* CFU */
+  .cfu-wrap {
+    background: var(--navy-mid); border: 1.5px solid var(--gold);
+    border-radius: 10px; padding: 20px 22px;
+    display: none; flex-direction: column; gap: 16px;
+  }
+  .cfu-wrap.show { display: flex; animation: slide-in 0.4s ease; }
+  .cfu-title {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--gold);
+  }
+  .cfu-sub { font-size: 13px; color: #a8b4d4; }
+  .cfu-q-block {
+    background: #1a2744; border: 1px solid #344870;
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .cfu-q-block.answered { border-color: var(--green); }
+  .cfu-complete-msg {
+    background: #0a4030; border: 1.5px solid var(--green);
+    border-radius: 8px; padding: 14px 16px;
+    font-size: 13.5px; color: #d4f5e5; line-height: 1.65;
+    display: none;
+  }
+  .cfu-complete-msg.show { display: block; animation: slide-in 0.3s ease; }
+
+  @media (max-width:600px) {
+    main { padding:14px 12px 40px; }
+    .cell-wrap { width:28px; height:28px; }
+    header { padding:12px 16px; }
+    .mode-bar { padding:0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Natural Selection Simulator</h1>
+    <p>Biology 1 · Unit 6 · Lesson 113</p>
+  </div>
+</header>
+
+<div class="mode-bar" id="mode-bar" style="display:none;">
+  <button class="mode-btn active" onclick="setMode('bacteria')" id="tab-bacteria">🦠 Bacteria + Penicillin</button>
+  <button class="mode-btn" onclick="setMode('insect')"   id="tab-insect">🪲 Insects + Pesticide</button>
+</div>
+
+<main>
+  <div class="scenario" id="scenario-box"></div>
+
+  <div class="legend" id="legend-box"></div>
+
+  <div class="gen-card">
+    <div class="gen-header">
+      <div>
+        <div class="gen-label" id="gen-label">Generation 0</div>
+        <div class="gen-title" id="gen-title">Original population</div>
+      </div>
+      <div class="gen-stats" id="gen-stats"></div>
+    </div>
+
+    <div class="petri-outer" id="petri-outer">
+      <div class="phase-overlay" id="phase-overlay"></div>
+      <div class="petri-grid"  id="petri-grid"></div>
+    </div>
+
+    <div class="freq-section">
+      <div class="freq-label">Resistance allele frequency</div>
+      <div class="freq-bar-wrap">
+        <div class="freq-seg fr" id="freq-r"></div>
+        <div class="freq-seg fp" id="freq-p"></div>
+        <div class="freq-seg fs" id="freq-s" style="width:100%">susceptible</div>
+      </div>
+    </div>
+
+    <div class="insight" id="insight-box"></div>
+    <div class="q-gate" id="q-gate"></div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="action-btn" onclick="nextStep()"></button>
+      <button class="btn btn-reset"   onclick="reset()">↺ Run Again</button>
+      <span class="step-note" id="step-note"></span>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">Data Table — results vary each run</div>
+    <div class="gen-card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Generation</th>
+              <th>Total</th>
+              <th>🟢 Resistant</th>
+              <th>🟡 Partial</th>
+              <th>⚪ Susceptible</th>
+              <th>% Carrying resistance allele</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CFU replaces old complete banner -->
+  <div class="cfu-wrap" id="cfu-wrap">
+    <div class="cfu-title">✓ Simulation Complete — Check For Understanding</div>
+    <div class="cfu-sub">Answer all three questions to unlock "Run Again" — use what you just observed.</div>
+
+    <!-- CFU Q1 -->
+    <div class="cfu-q-block" id="cfu-q1-block">
+      <div class="q-gate-label">CFU Question 1 of 3</div>
+      <div class="q-gate-text">You just watched resistance increase every generation even though some susceptible bacteria survived. What is the correct explanation for why resistance always wins over time?</div>
+      <div class="q-mc" id="cfu-q1-opts">
+        <button class="q-opt" onclick="cfuMC(1, this, false)"><span class="q-opt-letter">A</span>Resistant bacteria are smarter and avoid the antibiotic.</button>
+        <button class="q-opt" onclick="cfuMC(1, this, false)"><span class="q-opt-letter">B</span>Susceptible bacteria eventually mutate to become resistant during their lifetime.</button>
+        <button class="q-opt" onclick="cfuMC(1, this, true)"><span class="q-opt-letter">C</span>Resistant bacteria survive and reproduce at a higher rate every generation — their allele accumulates faster than susceptible alleles can recover.</button>
+        <button class="q-opt" onclick="cfuMC(1, this, false)"><span class="q-opt-letter">D</span>The antibiotic gets weaker over time, so resistant bacteria have an easier time.</button>
+      </div>
+      <div class="q-feedback" id="cfu-q1-fb"></div>
+    </div>
+
+    <!-- CFU Q2 -->
+    <div class="cfu-q-block" id="cfu-q2-block">
+      <div class="q-gate-label">CFU Question 2 of 3</div>
+      <div class="q-gate-text">In your own words: what did you <em>see happen</em> in the simulation that you couldn't have understood just by reading about natural selection? Describe a specific moment. (Write at least 20 characters.)</div>
+      <textarea class="q-sa" id="cfu-q2-input" placeholder="I could see that..." oninput="cfuSACheck()"></textarea>
+      <button class="q-sa-submit" id="cfu-q2-submit" onclick="cfuSASubmit()" disabled>Submit →</button>
+      <div class="q-feedback" id="cfu-q2-fb"></div>
+    </div>
+
+    <!-- CFU Q3 -->
+    <div class="cfu-q-block" id="cfu-q3-block">
+      <div class="q-gate-label">CFU Question 3 of 3</div>
+      <div class="q-gate-text">A new antibiotic is released tomorrow that kills 99% of resistant bacteria. Based on what the simulation showed you, what will likely happen to the bacterial population over the next 20 years?</div>
+      <div class="q-mc" id="cfu-q3-opts">
+        <button class="q-opt" onclick="cfuMC(3, this, false)"><span class="q-opt-letter">A</span>The bacteria will permanently be eliminated — 99% is close enough to 100%.</button>
+        <button class="q-opt" onclick="cfuMC(3, this, true)"><span class="q-opt-letter">B</span>The 1% that survive will reproduce, and directional selection will favor resistance to the new antibiotic — the same pattern will repeat.</button>
+        <button class="q-opt" onclick="cfuMC(3, this, false)"><span class="q-opt-letter">C</span>Bacteria will learn to avoid the new antibiotic through experience.</button>
+        <button class="q-opt" onclick="cfuMC(3, this, false)"><span class="q-opt-letter">D</span>The resistance allele will disappear because the original antibiotic is no longer being used.</button>
+      </div>
+      <div class="q-feedback" id="cfu-q3-fb"></div>
+    </div>
+
+    <div class="cfu-complete-msg" id="cfu-complete-msg">
+      🎉 <strong>All three answered.</strong> You've described natural selection from the inside — what it looks like, why it's directional, and why it never stops. Click <strong>↺ Run Again</strong> to see a different outcome with the same biology.
+    </div>
+  </div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  BIOLOGY MODEL
+//
+//  Phenotypes: 0 = susceptible, 1 = partial, 2 = resistant
+//
+//  WHAT THE ANTIBIOTIC DOES:
+//  • Susceptible (0):  80% killed, 20% survive (stay susceptible)
+//  • Partial (1):      50% killed, 50% upgraded to resistant (2)
+//  • Resistant (2):    never affected — always survives
+//
+//  REPRODUCTION (binary fission):
+//  • Each survivor divides into exactly 2 daughter cells
+//  • Daughters inherit EXACTLY the parent's phenotype
+//    (resistance never goes backwards)
+//
+//  Because susceptible can survive at 20%, resistance trends
+//  upward but more gradually — more realistic selection pressure.
+// ══════════════════════════════════════════════════════
+
+const MAX_GENS = 6;
+const MAX_CELLS = 60; // cap to keep display manageable
+
+function applyPressure(pop) {
+  // Returns { survivors: [], outcomes: Map(id -> 'survive'|'killed'|'upgraded') }
+  //
+  //  Susceptible (0): 80% killed · 20% survive (stay susceptible)
+  //  Partial (1):     33% killed · 33% survive (stay partial) · 33% upgraded to resistant
+  //  Resistant (2):   always survives
+  //
+  const outcomes = new Map();
+  const survivors = [];
+  pop.forEach(cell => {
+    if (cell.type === 0) {
+      if (Math.random() < 0.8) {
+        outcomes.set(cell.id, 'killed');
+      } else {
+        outcomes.set(cell.id, 'survive');
+        survivors.push({ type: 0, id: cell.id });
+      }
+    } else if (cell.type === 1) {
+      const r = Math.random();
+      if (r < 0.33) {
+        // Killed
+        outcomes.set(cell.id, 'killed');
+      } else if (r < 0.67) {
+        // Survive — stays partial
+        outcomes.set(cell.id, 'survive');
+        survivors.push({ type: 1, id: cell.id });
+      } else {
+        // Upgraded to fully resistant
+        outcomes.set(cell.id, 'upgraded');
+        survivors.push({ type: 2, id: cell.id });
+      }
+    } else {
+      outcomes.set(cell.id, 'survive');
+      survivors.push({ type: 2, id: cell.id });
+    }
+  });
+  return { survivors, outcomes };
+}
+
+function reproduce(survivors) {
+  // Each survivor produces 2 daughters (binary fission), same phenotype.
+  // Population is then sampled back to a stable carrying capacity (30–40 cells)
+  // proportional to each phenotype's representation among survivors.
+  // This models a realistic environment where total population stays roughly stable
+  // (limited resources / immune pressure), so susceptible survivors can persist
+  // and the 20% survival rate has visible, meaningful effects across generations.
+  const nextPop = [];
+  survivors.forEach(cell => {
+    nextPop.push({ type: cell.type, id: makeId() });
+    nextPop.push({ type: cell.type, id: makeId() });
+  });
+  // Target size: stable around 28–36 cells (mimics carrying capacity)
+  const TARGET = 28 + Math.floor(Math.random() * 9);
+  if (nextPop.length > TARGET) {
+    nextPop.sort(() => Math.random() - 0.5);
+    return nextPop.slice(0, TARGET);
+  }
+  return nextPop;
+}
+
+// ══════════════════════════════════════════════════════
+//  SVG RENDERERS — bacteria with pili, nucleoid, ribosomes
+//  type 0 = susceptible (open/white), 1 = partial (amber), 2 = resistant (green)
+// ══════════════════════════════════════════════════════
+
+function bacteriaColors(t) {
+  if (t === 2) return { body:'#1D9E75', stroke:'#085041', nucleus:'#085041', dna:'#1D9E75', ribo:'#0a5c42' };
+  if (t === 1) return { body:'#d97706', stroke:'#92560a', nucleus:'#92560a', dna:'#fef3c7', ribo:'#78450a' };
+  return      { body:'white',   stroke:'#1D9E75', nucleus:'#c8ece0', dna:'#1D9E75',   ribo:'#a8dece' };
+}
+
+// Each bacterium gets a stable random rotation and pili pattern based on its id
+function bacteriaSeed(id) { return (id * 2654435761) >>> 0; }
+
+function svgForType(t, id = 0) {
+  const c = bacteriaColors(t);
+  // Use id for deterministic rotation so cells don't all face the same way
+  const seed = bacteriaSeed(id || Math.floor(Math.random()*9999));
+  const rot = (seed % 360);
+  // Vary pili length slightly
+  const pl = 6 + (seed % 4);
+  return `<svg viewBox="0 0 44 44" style="overflow:visible;">
+    <g transform="translate(22,22) rotate(${rot})">
+      <!-- Pili (hair-like projections) -->
+      <g stroke="${c.stroke}" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.85">
+        <line x1="-14" y1="-5"  x2="${-14-pl}" y2="${-9}"/>
+        <line x1="-14" y1="0"   x2="${-14-pl}" y2="1"/>
+        <line x1="-14" y1="5"   x2="${-14-pl}" y2="9"/>
+        <line x1="14"  y1="-5"  x2="${14+pl}"  y2="${-9}"/>
+        <line x1="14"  y1="0"   x2="${14+pl}"  y2="1"/>
+        <line x1="14"  y1="5"   x2="${14+pl}"  y2="9"/>
+        <line x1="-4"  y1="-9"  x2="-5"        y2="${-9-pl}"/>
+        <line x1="4"   y1="-9"  x2="5"         y2="${-9-pl}"/>
+        <line x1="-4"  y1="9"   x2="-5"        y2="${9+pl}"/>
+        <line x1="4"   y1="9"   x2="5"         y2="${9+pl}"/>
+      </g>
+      <!-- Cell body (ellipse) -->
+      <ellipse cx="0" cy="0" rx="14" ry="9" fill="${c.body}" stroke="${c.stroke}" stroke-width="1.8"/>
+      <!-- Nucleoid region -->
+      <ellipse cx="0" cy="0" rx="6" ry="4" fill="${c.nucleus}" opacity="0.55"/>
+      <!-- DNA squiggle inside nucleoid -->
+      <path d="M-5,0 Q-2.5,-2.5 0,0 Q2.5,2.5 5,0" stroke="${c.dna}" stroke-width="1" fill="none" opacity="0.9"/>
+      <!-- Ribosomes (small dots in cytoplasm) -->
+      <circle cx="-8"  cy="-3" r="1.4" fill="${c.ribo}" opacity="0.7"/>
+      <circle cx="8"   cy="-3" r="1.4" fill="${c.ribo}" opacity="0.7"/>
+      <circle cx="-8"  cy="3"  r="1.4" fill="${c.ribo}" opacity="0.7"/>
+      <circle cx="8"   cy="3"  r="1.4" fill="${c.ribo}" opacity="0.7"/>
+      <circle cx="0"   cy="-6" r="1.2" fill="${c.ribo}" opacity="0.6"/>
+    </g>
+  </svg>`;
+}
+
+function svgDead(id = 0) {
+  const seed = bacteriaSeed(id || 0);
+  const rot = seed % 360;
+  return `<svg viewBox="0 0 44 44" style="overflow:visible;">
+    <g transform="translate(22,22) rotate(${rot})" opacity="0.3">
+      <ellipse cx="0" cy="0" rx="14" ry="9" fill="none" stroke="#C0392B" stroke-width="1.8"/>
+      <line x1="-8" y1="-5" x2="8" y2="5" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/>
+      <line x1="8" y1="-5" x2="-8" y2="5" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+
+function svgSpan(t, size=26) {
+  return `<span style="display:inline-block;width:${size}px;height:${size}px;vertical-align:middle;flex-shrink:0;">${svgForType(t)}</span>`;
+}
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let mode = 'bacteria';
+let step = 0;
+let animating = false;
+let population = [];
+let tableRows = [];
+let idCounter = 0;
+function makeId() { return ++idCounter; }
+
+function initPopulation() {
+  population = [];
+  idCounter = 0;
+  const total = 26 + Math.floor(Math.random() * 4);
+
+  // Guarantee at least 1 resistant and 2 partial so extinction is impossible
+  const guaranteed = [2, 1, 1];
+  guaranteed.forEach(type => population.push({ type, id: makeId() }));
+
+  // Fill the rest randomly
+  for (let i = guaranteed.length; i < total; i++) {
+    const r = Math.random();
+    const type = r < 0.06 ? 2 : r < 0.20 ? 1 : 0;
+    population.push({ type, id: makeId() });
+  }
+
+  // Shuffle so guaranteed cells aren't always first
+  for (let i = population.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [population[i], population[j]] = [population[j], population[i]];
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
+function renderPetri(pop, animIn = false) {
+  const grid = document.getElementById('petri-grid');
+  grid.innerHTML = '';
+  const shuffled = [...pop].sort(() => Math.random() - 0.5);
+  shuffled.forEach((cell, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cell-wrap' + (animIn ? ' anim-popin' : '');
+    wrap.dataset.id = cell.id;
+    wrap.innerHTML = svgForType(cell.type, cell.id);
+    if (animIn) wrap.style.animationDelay = (i * 15) + 'ms';
+    grid.appendChild(wrap);
+  });
+}
+
+function counts(pop) {
+  const c = {0:0,1:0,2:0};
+  pop.forEach(x => c[x.type]++);
+  c.total = pop.length;
+  return c;
+}
+
+function updateStats(pop) {
+  const c = counts(pop);
+  document.getElementById('gen-stats').innerHTML = `
+    <span class="stat-chip chip-r">${c[2]} resistant</span>
+    <span class="stat-chip chip-p">${c[1]} partial</span>
+    <span class="stat-chip chip-s">${c[0]} susceptible</span>
+    <span class="stat-chip chip-t">${c.total} total</span>
+  `;
+}
+
+function updateFreq(pop) {
+  const c = counts(pop);
+  const t = c.total || 1;
+  const pR = (c[2]/t*100).toFixed(0);
+  const pP = (c[1]/t*100).toFixed(0);
+  const pS = (c[0]/t*100).toFixed(0);
+  const r = document.getElementById('freq-r');
+  const p = document.getElementById('freq-p');
+  const s = document.getElementById('freq-s');
+  r.style.width = pR+'%'; r.textContent = pR>8 ? pR+'% R' : '';
+  p.style.width = pP+'%'; p.textContent = pP>8 ? pP+'% P' : '';
+  s.style.width = pS+'%'; s.textContent = pS>8 ? pS+'% susc.' : '';
+}
+
+function setPhaseOverlay(mode, text) {
+  const ov = document.getElementById('phase-overlay');
+  ov.className = 'phase-overlay' + (mode ? ' '+mode : '');
+  ov.textContent = text || '';
+}
+
+function updateHeader(gen, title) {
+  document.getElementById('gen-label').textContent = 'Generation ' + gen;
+  document.getElementById('gen-title').textContent = title;
+}
+
+function updateBtn() {
+  const btn = document.getElementById('action-btn');
+  const m = MODES[mode];
+  if (step >= MAX_GENS) {
+    btn.textContent = '✓ Complete';
+    btn.disabled = true;
+  } else {
+    btn.textContent = m.pressureName + ' → Gen ' + (step+1);
+    btn.disabled = false;
+  }
+  document.getElementById('step-note').textContent =
+    step < MAX_GENS
+      ? `Generation ${step} of ${MAX_GENS} — results vary each run`
+      : `All ${MAX_GENS} generations complete — click Run Again`;
+}
+
+// ══════════════════════════════════════════════════════
+//  QUESTION GATE DATA
+//  Each generation (1–6) has a question that must be
+//  answered before the next step unlocks.
+//  type: 'mc' | 'sa'
+//  For MC: options array of {text, correct}
+//  For SA: minChars required
+// ══════════════════════════════════════════════════════
+const QUESTIONS = {
+  bacteria: [
+    // After Gen 1
+    { type:'mc',
+      label: 'Before you continue — Gen 1 check',
+      text: 'Some susceptible bacteria survived this round. Why didn\'t ALL of them die?',
+      opts: [
+        { text: 'They developed a resistance mutation during this generation.', correct: false },
+        { text: 'The antibiotic killed 80% by chance — 20% survived randomly, not because they were resistant.', correct: true },
+        { text: 'The antibiotic was too weak in Generation 1.', correct: false },
+        { text: 'Susceptible bacteria hid inside resistant bacteria to survive.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. 20% of susceptible bacteria survive each round by chance — not because they\'re resistant. This is stochastic survival, not natural selection. Selection only acts on what was already there.', hint: 'Think about the survival probabilities in the legend. Susceptible bacteria face an 80% kill rate — which means 20% always escape by chance, not by being resistant.' }
+    },
+    // After Gen 2
+    { type:'mc',
+      label: 'Before you continue — Gen 2 check',
+      text: 'Each survivor just divided into two daughter cells. What type of reproduction is this, and what did the daughters inherit?',
+      opts: [
+        { text: 'Sexual reproduction — daughters got genes from two parents.', correct: false },
+        { text: 'Binary fission — each daughter is an exact clone of the parent, inheriting the same resistance phenotype.', correct: true },
+        { text: 'Binary fission — daughters randomly get either resistant or susceptible traits.', correct: false },
+        { text: 'Budding — a small copy grows off the side of the parent.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. Binary fission produces exact clones — resistance is inherited perfectly every time. This is why resistance can spread so fast and never go backwards.', hint: 'Bacteria reproduce asexually — there\'s no mixing of genes from two parents. Whatever the parent had, both daughters get.' }
+    },
+    // After Gen 3
+    { type:'sa',
+      label: 'Before you continue — Gen 3 check',
+      text: 'Look at the allele frequency bar. Explain in your own words: why is resistance only moving in one direction? What would have to happen for it to go backwards?',
+      minChars: 30,
+      feedback: { good: '✓ Saved. Look for this in your response: resistance goes forward because resistant bacteria always survive (100%) while susceptible ones lose 80% each generation. For it to go backwards, susceptible bacteria would need to outreproduce resistant ones — which can\'t happen when they face an 80% kill rate every round.' }
+    },
+    // After Gen 4
+    { type:'mc',
+      label: 'Before you continue — Gen 4 check',
+      text: 'A partially resistant bacterium survived this round and stayed partial (not upgraded). What type will its two daughter cells be?',
+      opts: [
+        { text: 'Both daughters will be fully resistant — surviving means the mutation completed.', correct: false },
+        { text: 'One daughter resistant, one susceptible — it\'s a coin flip.', correct: false },
+        { text: 'Both daughters will be partially resistant — binary fission copies the parent exactly.', correct: true },
+        { text: 'Both daughters will be susceptible — partial resistance isn\'t heritable.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. Binary fission is an exact copy every time. If the parent was partial, both daughters are partial. The resistance allele — or lack of it — is inherited with perfect fidelity.', hint: 'Remember: binary fission produces clones. The parent\'s phenotype is copied exactly. No randomness in the inheritance itself — only in whether the parent survived.' }
+    },
+    // After Gen 5
+    { type:'mc',
+      label: 'Before you continue — Gen 5 check',
+      text: 'Some susceptible bacteria are still surviving each round at 20%. Why can\'t they "catch up" to the resistant bacteria over time?',
+      opts: [
+        { text: 'They can — if enough susceptible bacteria survive, they will eventually outnumber the resistant ones.', correct: false },
+        { text: 'Because susceptible bacteria can\'t reproduce as fast as resistant ones.', correct: false },
+        { text: 'Because they lose 80% of their offspring every generation while resistant bacteria lose 0% — resistance accumulates faster than susceptibility can recover.', correct: true },
+        { text: 'Because the antibiotic targets susceptible bacteria specifically.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. This is differential fitness in action. Resistant bacteria: 100% survive each round. Susceptible bacteria: 20% survive. Even if susceptible ones reproduce, they keep losing 80% of offspring. The math always favors resistance across enough generations.', hint: 'Think about the compounding effect. Resistant bacteria keep 100% of offspring every generation. Susceptible bacteria keep only 20%. Even if they start equal, resistant bacteria will always pull ahead.' }
+    },
+    // After Gen 6 — no gate, CFU takes over
+    null,
+  ],
+  insect: [
+    { type:'mc', label:'Before you continue — Gen 1 check',
+      text: 'Some susceptible insects survived this pesticide application. What is the correct explanation?',
+      opts: [
+        { text: 'They developed resistance during this generation.', correct: false },
+        { text: 'The pesticide killed 80% by chance — 20% survived randomly, not because they were resistant.', correct: true },
+        { text: 'The pesticide was applied incorrectly.', correct: false },
+        { text: 'Susceptible insects hid under resistant ones.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. 20% survive each round by chance, not because they carry a resistance allele. This is stochastic survival — random, not selected.', hint: 'Check the legend: susceptible insects have an 80% kill rate. That means 20% escape each round by chance, not by being resistant.' }
+    },
+    { type:'mc', label:'Before you continue — Gen 2 check',
+      text: 'Each surviving insect just reproduced. What type of reproduction did the simulation model, and what did offspring inherit?',
+      opts: [
+        { text: 'Sexual reproduction — offspring are a mix of both parents\' traits.', correct: false },
+        { text: 'Binary fission — each offspring is an exact clone, inheriting the parent\'s resistance phenotype.', correct: true },
+        { text: 'Binary fission — offspring randomly get either resistant or susceptible traits.', correct: false },
+        { text: 'Asexual reproduction by budding — small copies grow from the parent.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. Binary fission produces exact clones. Resistance is inherited with perfect fidelity — which is why it can spread so reliably and never go backwards.', hint: 'Bacteria (and this simplified insect model) reproduce asexually — offspring are clones of the parent.' }
+    },
+    { type:'sa', label:'Before you continue — Gen 3 check',
+      text: 'Look at the allele frequency bar. In your own words, why does the resistance segment only grow — never shrink? What would need to be true for it to go backwards?',
+      minChars: 30,
+      feedback: { good: '✓ Saved. Key idea: resistance grows because resistant insects always survive while susceptible ones lose 80% per generation. For it to go backwards, susceptible insects would need to outreproduce resistant ones — impossible when facing an 80% kill rate every round.' }
+    },
+    { type:'mc', label:'Before you continue — Gen 4 check',
+      text: 'A partially resistant insect survived unchanged this round. What will its offspring be?',
+      opts: [
+        { text: 'Both offspring will be fully resistant.', correct: false },
+        { text: 'One offspring resistant, one susceptible.', correct: false },
+        { text: 'Both offspring will be partially resistant — binary fission copies the parent exactly.', correct: true },
+        { text: 'Both offspring will be susceptible.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. Binary fission is exact every time. Partial parent → two partial daughters. The allele is inherited perfectly.', hint: 'Binary fission = exact clone. The parent\'s phenotype is copied, not mixed or randomized.' }
+    },
+    { type:'mc', label:'Before you continue — Gen 5 check',
+      text: 'Susceptible insects keep surviving at 20% each round. Why do resistant insects still dominate by Gen 6?',
+      opts: [
+        { text: 'Susceptible insects stop reproducing after a few generations.', correct: false },
+        { text: 'Because resistant insects produce more offspring per individual.', correct: false },
+        { text: 'Because resistant insects lose 0% of offspring every generation while susceptible insects lose 80% — the fitness gap compounds over time.', correct: true },
+        { text: 'Susceptible insects are more likely to be eaten by predators.', correct: false },
+      ],
+      feedback: { good: '✓ Correct. The 100% vs 20% survival rate is a massive fitness differential. Over 6 generations it compounds — resistant insects accumulate while susceptible ones are constantly depleted.', hint: 'Think about what happens to 100 resistant insects vs 100 susceptible insects after 6 rounds: resistant keep all offspring, susceptible keep only 20% each time.' }
+    },
+    null,
+  ]
+};
+
+// ── QUESTION GATE STATE ──
+let questionAnswered = false; // tracks whether current gen's gate is cleared
+
+function showInsight(genIdx) {
+  const m = MODES[mode];
+  const box = document.getElementById('insight-box');
+  const idx = Math.min(genIdx - 1, m.insights.length - 1);
+  box.innerHTML = m.insights[idx];
+  box.classList.add('show');
+
+  // Show question gate for this generation (Gen 1–5; Gen 6 uses CFU)
+  const qData = QUESTIONS[mode][genIdx - 1];
+  if (qData && step < MAX_GENS) {
+    questionAnswered = false;
+    renderQuestionGate(qData);
+    // Keep action button disabled until question answered
+    document.getElementById('action-btn').disabled = true;
+  } else if (step >= MAX_GENS) {
+    // Gen 6 complete — show CFU, hide action btn
+    showCFU();
+  }
+}
+
+function hideInsight() {
+  document.getElementById('insight-box').classList.remove('show');
+  hideQuestionGate();
+}
+
+function renderQuestionGate(qData) {
+  const gate = document.getElementById('q-gate');
+  if (qData.type === 'mc') {
+    gate.innerHTML = `
+      <div class="q-gate-label">${qData.label}</div>
+      <div class="q-gate-text">${qData.text}</div>
+      <div class="q-mc" id="qg-opts">
+        ${qData.opts.map((opt, i) => `
+          <button class="q-opt" onclick="answerMC(this, ${opt.correct}, ${JSON.stringify(qData.feedback).replace(/"/g,"'")})">
+            <span class="q-opt-letter">${String.fromCharCode(65+i)}</span>${opt.text}
+          </button>`).join('')}
+      </div>
+      <div class="q-feedback" id="qg-feedback"></div>
+      <div class="q-unlock-note">Answer the question above to continue →</div>
+    `;
+  } else {
+    gate.innerHTML = `
+      <div class="q-gate-label">${qData.label}</div>
+      <div class="q-gate-text">${qData.text}</div>
+      <textarea class="q-sa" id="qg-sa" placeholder="Write your answer here..." oninput="saCheck(${qData.minChars})"></textarea>
+      <button class="q-sa-submit" id="qg-submit" onclick="answerSA(${JSON.stringify(qData.feedback).replace(/"/g,"'")})" disabled>Submit →</button>
+      <div class="q-feedback" id="qg-feedback"></div>
+      <div class="q-unlock-note" id="qg-note">Write at least ${qData.minChars} characters to continue →</div>
+    `;
+  }
+  gate.classList.add('show');
+  gate.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideQuestionGate() {
+  const gate = document.getElementById('q-gate');
+  gate.classList.remove('show');
+  gate.innerHTML = '';
+}
+
+function answerMC(btn, correct, feedback) {
+  if (questionAnswered) return;
+  const opts = btn.closest('.q-mc').querySelectorAll('.q-opt');
+  const fb = document.getElementById('qg-feedback');
+
+  opts.forEach(o => o.disabled = true);
+
+  if (correct) {
+    btn.classList.add('correct');
+    fb.className = 'q-feedback show good';
+    fb.innerHTML = feedback.good;
+    unlockNextStep();
+  } else {
+    btn.classList.add('wrong');
+    // Reveal correct answer
+    opts.forEach(o => {
+      if (o.innerHTML.includes('true') || o.onclick.toString().includes('true')) {
+        // Can't easily re-check — just show hint and unlock after attempt
+      }
+    });
+    fb.className = 'q-feedback show hint';
+    fb.innerHTML = '💡 ' + feedback.hint + '<br><br><em>The correct answer has been revealed below — read it, then continue.</em>';
+    // Highlight the correct button
+    opts.forEach(o => {
+      const onclickStr = o.getAttribute('onclick');
+      if (onclickStr && onclickStr.includes(', true,')) o.classList.add('correct');
+    });
+    unlockNextStep();
+  }
+  questionAnswered = true;
+}
+
+function saCheck(minChars) {
+  const ta = document.getElementById('qg-sa');
+  const btn = document.getElementById('qg-submit');
+  const note = document.getElementById('qg-note');
+  const len = ta.value.trim().length;
+  btn.disabled = len < minChars;
+  if (note) note.textContent = len < minChars
+    ? `Write at least ${minChars} characters to continue → (${len}/${minChars})`
+    : '✓ Ready to submit';
+  ta.classList.toggle('filled', len >= minChars);
+}
+
+function answerSA(feedback) {
+  if (questionAnswered) return;
+  const ta = document.getElementById('qg-sa');
+  const btn = document.getElementById('qg-submit');
+  const fb = document.getElementById('qg-feedback');
+  ta.disabled = true;
+  btn.disabled = true;
+  fb.className = 'q-feedback show good';
+  fb.innerHTML = feedback.good;
+  questionAnswered = true;
+  unlockNextStep();
+}
+
+function unlockNextStep() {
+  if (step < MAX_GENS) {
+    document.getElementById('action-btn').disabled = false;
+  }
+  // Update note
+  document.getElementById('step-note').textContent = '✓ Question answered — click to continue';
+  document.querySelectorAll('.q-unlock-note').forEach(el => {
+    el.textContent = '✓ Question answered — click the button above to continue';
+    el.style.color = 'var(--green)';
+  });
+}
+
+
+
+function pushRow(gen, pop) {
+  const c = counts(pop);
+  const pct = Math.round((c[2]+c[1]) / (c.total||1) * 100);
+  tableRows.push({ gen, c, total: c.total, pct });
+  rebuildTable();
+}
+
+function rebuildTable() {
+  const m = MODES[mode];
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  for (let g = 0; g <= MAX_GENS; g++) {
+    const row = tableRows.find(r => r.gen === g);
+    const isActive = row && g === tableRows[tableRows.length-1].gen;
+    const tr = document.createElement('tr');
+    if (isActive) tr.className = 'row-active';
+    if (row) {
+      tr.innerHTML = `
+        <td>${m.rowLabels[g]}</td>
+        <td>${row.total}</td>
+        <td>${row.c[2]}</td>
+        <td>${row.c[1]}</td>
+        <td>${row.c[0]}</td>
+        <td><span class="${row.pct>=50?'pct-hi':'pct-lo'}">${row.pct}%</span></td>`;
+    } else {
+      tr.innerHTML = `<td>${m.rowLabels[g]}</td>
+        <td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td>
+        <td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td>
+        <td><span class="val-hidden">—</span></td>`;
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  ANTIBIOTIC SPRAY VISUAL
+//  Rains small red dots across the petri dish
+// ══════════════════════════════════════════════════════
+async function animateSpray() {
+  const outer = document.getElementById('petri-outer');
+  const dots = [];
+  for (let i = 0; i < 28; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'spray-dot';
+    const sz = 6 + Math.random() * 8;
+    dot.style.cssText = `
+      width:${sz}px; height:${sz}px;
+      left:${Math.random()*90+2}%;
+      top:${Math.random()*80+5}%;
+      animation-delay: ${Math.random()*400}ms;
+    `;
+    outer.appendChild(dot);
+    dots.push(dot);
+  }
+  await delay(700);
+  dots.forEach(d => d.remove());
+}
+
+// ══════════════════════════════════════════════════════
+//  KILLING ANIMATION
+// ══════════════════════════════════════════════════════
+async function animateKilling(outcomes) {
+  const grid = document.getElementById('petri-grid');
+  const wraps = [...grid.querySelectorAll('.cell-wrap')];
+
+  wraps.forEach(wrap => {
+    const id = parseInt(wrap.dataset.id);
+    const outcome = outcomes.get(id);
+    if (outcome === 'killed') {
+      wrap.classList.add('anim-die');
+      setTimeout(() => { wrap.innerHTML = svgDead(id); }, 200);
+    } else if (outcome === 'upgraded') {
+      wrap.classList.add('anim-upgrade');
+      setTimeout(() => { wrap.innerHTML = svgForType(2, id); }, 200);
+    }
+  });
+
+  await delay(750);
+
+  wraps.forEach(wrap => {
+    const id = parseInt(wrap.dataset.id);
+    if (outcomes.get(id) === 'killed') wrap.remove();
+    else wrap.classList.remove('anim-die', 'anim-upgrade');
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  MITOSIS ANIMATION
+//  Each survivor: pinches → vanishes → two daughters fly apart
+// ══════════════════════════════════════════════════════
+async function animateMitosis(survivors) {
+  const grid   = document.getElementById('petri-grid');
+  const outer  = document.getElementById('petri-outer');
+  const outerR = outer.getBoundingClientRect();
+  const wraps  = [...grid.querySelectorAll('.cell-wrap')];
+  const newPop = [];
+
+  // Process all cells concurrently in batches of 4 to avoid overwhelming
+  const BATCH = 4;
+  for (let b = 0; b < wraps.length; b += BATCH) {
+    const batch = wraps.slice(b, b + BATCH);
+    await Promise.all(batch.map(async (wrap, bi) => {
+      const id = parseInt(wrap.dataset.id);
+      const parent = survivors.find(c => c.id === id);
+      if (!parent) return;
+
+      // Get center of parent in outer coords
+      const wr = wrap.getBoundingClientRect();
+      const cx = wr.left - outerR.left + wr.width  / 2;
+      const cy = wr.top  - outerR.top  + wr.height / 2;
+
+      // Pre-divide animation: grow → pinch → vanish
+      wrap.classList.add('anim-prediv');
+      await delay(300);
+
+      // Both daughters start at parent center, fly in opposite directions
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 24 + Math.random() * 18;
+
+      for (let d = 0; d < 2; d++) {
+        // Daughter inherits EXACT phenotype (no backwards movement)
+        const dtype = parent.type;
+        const did = makeId();
+        newPop.push({ type: dtype, id: did });
+
+        const dir = d === 0 ? 1 : -1;
+        const tx = Math.cos(angle) * dist * dir;
+        const ty = Math.sin(angle) * dist * dir;
+
+        const dEl = document.createElement('div');
+        dEl.className = 'daughter';
+        dEl.style.left = (cx - 22) + 'px';
+        dEl.style.top  = (cy - 22) + 'px';
+        dEl.style.setProperty('--tx', tx + 'px');
+        dEl.style.setProperty('--ty', ty + 'px');
+        dEl.innerHTML = svgForType(dtype, did);
+        outer.appendChild(dEl);
+        await delay(d * 25);
+        dEl.classList.add('fly');
+      }
+
+      await delay(680);
+      wrap.remove();
+      outer.querySelectorAll('.daughter').forEach(d => d.remove());
+    }));
+    if (b + BATCH < wraps.length) await delay(120);
+  }
+
+  return newPop;
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ══════════════════════════════════════════════════════
+//  MAIN STEP
+// ══════════════════════════════════════════════════════
+async function nextStep() {
+  if (animating || step >= MAX_GENS) return;
+  animating = true;
+  hideInsight();
+  document.getElementById('action-btn').disabled = true;
+
+  const m = MODES[mode];
+
+  // ── Phase 1: SPRAY ──
+  setPhaseOverlay('killing', `Applying ${m.pressureName}...`);
+  updateHeader(step, `Gen ${step}: ${m.pressureName} applied`);
+  await animateSpray();
+
+  // ── Phase 2: KILL / UPGRADE ──
+  const { survivors, outcomes } = applyPressure(population);
+  await animateKilling(outcomes);
+  updateStats(survivors);
+  updateFreq(survivors);
+  setPhaseOverlay('', '');
+  await delay(350);
+
+  // ── Phase 3: MITOSIS ──
+  setPhaseOverlay('dividing', 'Binary fission — each cell divides into 2 daughters');
+  updateHeader(step, `Gen ${step}: Survivors reproducing`);
+  const nextPop = await animateMitosis(survivors);
+  setPhaseOverlay('', '');
+
+  // ── Phase 4: NEW GENERATION ──
+  step++;
+  population = nextPop;
+  renderPetri(population, true);
+  updateStats(population);
+  updateFreq(population);
+  updateHeader(step, m.genTitles[step]);
+  pushRow(step, population);
+  updateBtn();
+  showInsight(step);
+
+  animating = false;
+}
+
+// ══════════════════════════════════════════════════════
+//  RESET / MODE
+// ══════════════════════════════════════════════════════
+function reset() {
+  if (animating) return;
+  step = 0;
+  tableRows = [];
+  animating = false;
+  questionAnswered = false;
+  cfuAnswered = { 1: false, 2: false, 3: false };
+  hideInsight();
+  hideQuestionGate();
+  setPhaseOverlay('', '');
+  document.getElementById('cfu-wrap').classList.remove('show');
+  document.getElementById('cfu-complete-msg').classList.remove('show');
+  // Reset CFU blocks
+  [1,2,3,4].forEach(n => {
+    const block = document.getElementById(`cfu-q${n}-block`);
+    if (block) block.classList.remove('answered');
+    const fb = document.getElementById(`cfu-q${n}-fb`);
+    if (fb) { fb.className = 'q-feedback'; fb.innerHTML = ''; }
+  });
+  // Re-enable CFU buttons
+  document.querySelectorAll('#cfu-wrap .q-opt').forEach(o => { o.disabled = false; o.classList.remove('correct','wrong'); });
+  [2,4].forEach(n => {
+    const ta = document.getElementById(`cfu-q${n}-input`);
+    if (ta) { ta.value = ''; ta.disabled = false; ta.classList.remove('filled'); }
+    const sub = document.getElementById(`cfu-q${n}-submit`);
+    if (sub) { sub.disabled = true; }
+  });
+  document.querySelector('.btn-reset').disabled = true;
+  document.getElementById('petri-outer').querySelectorAll('.daughter,.spray-dot').forEach(e=>e.remove());
+
+  initPopulation();
+  renderPetri(population);
+  updateStats(population);
+  updateFreq(population);
+  updateHeader(0, MODES[mode].genTitles[0]);
+  pushRow(0, population);
+  updateBtn();
+}
+
+function setMode(m) {
+  if (animating) return;
+  mode = m;
+  document.getElementById('tab-bacteria').classList.toggle('active', m==='bacteria');
+  document.getElementById('tab-insect').classList.toggle('active', m==='insect');
+  document.getElementById('scenario-box').innerHTML = MODES[m].scenario;
+  document.getElementById('legend-box').innerHTML = `
+    <span class="legend-title">Key:</span>
+    <span class="legend-item">${svgSpan(2)} Resistant — always survives, divides into 2 resistant daughters</span>
+    <span class="legend-item">${svgSpan(1)} Partial — 33% killed · 33% survive (stay partial) · 33% upgraded to resistant</span>
+    <span class="legend-item">${svgSpan(0)} Susceptible — 80% killed · 20% survive (stay susceptible)</span>
+    <span class="legend-item" style="font-size:12px;color:#888;margin-left:4px;">🔴 spray dots = ${MODES[m].pressureName} particles</span>
+  `;
+  document.getElementById('cfu-wrap').classList.remove('show');
+  reset();
+}
+
+// ══════════════════════════════════════════════════════
+//  MODE DATA
+// ══════════════════════════════════════════════════════
+const MODES = {
+  bacteria: {
+    scenario: `<strong>Scenario 3 — Penicillin Resistance in <em>Staphylococcus aureus</em></strong><br>
+It is 1945. Penicillin has just entered widespread clinical use. Most <em>Staphylococcus</em> bacteria are fully susceptible.
+A few carry <strong>one resistance allele</strong> (partial protection). A rare number carry <strong>two resistance alleles</strong> (full resistance).
+Each generation, penicillin is applied — but 20% of susceptible bacteria survive by chance each round. Watch what happens — results vary each run!`,
+    pressureName: 'Apply Penicillin',
+    genTitles: [
+      'Original population — before penicillin',
+      'After 1st penicillin treatment',
+      'After 2nd penicillin treatment',
+      'After 3rd penicillin treatment',
+      'After 4th penicillin treatment',
+      'After 5th penicillin treatment',
+      'After 6th penicillin treatment',
+    ],
+    rowLabels: [
+      'Gen 0 — before treatment',
+      'Gen 1 — after 1st treatment',
+      'Gen 2 — after 2nd treatment',
+      'Gen 3 — after 3rd treatment',
+      'Gen 4 — after 4th treatment',
+      'Gen 5 — after 5th treatment',
+      'Gen 6 — after 6th treatment',
+    ],
+    insights: [
+      `<strong>Gen 1:</strong> Penicillin killed ~80% of susceptible bacteria — 20% survived by chance. Partially resistant bacteria had three possible outcomes: killed (33%), survived and stayed partial (33%), or upgraded to fully resistant (33%). Notice amber cells may still be visible — partial bacteria persist longer now.`,
+      `<strong>Gen 2:</strong> Each survivor divided into two daughter cells with the same phenotype. Surviving partial cells produced partial daughters — they'll face the same 33% kill rate next round but also another 33% chance to upgrade. Watch the amber cells gradually convert to green over several generations.`,
+      `<strong>Gen 3:</strong> Three populations may coexist: susceptible (white, depleting at 80%/gen), partial (amber, slowly upgrading to green), and resistant (green, accumulating). The allele frequency bar shows resistance climbing — but more gradually than if partial cells were eliminated immediately.`,
+      `<strong>Gen 4:</strong> The partial cells are acting as a stepping stone — each generation, roughly a third of them upgrade to fully resistant. This is a realistic model: real bacteria with partial resistance mutations can persist and continue accumulating resistance across multiple generations.`,
+      `<strong>Gen 5:</strong> Susceptible bacteria should be nearly gone by now — the 80% kill rate means their numbers erode faster than they can reproduce. Partial cells may still be present. Resistant cells are dominating — their 100% survival rate compounds each generation.`,
+      `<strong>Gen 6:</strong> <strong>Selection is largely complete.</strong> Even with partial bacteria surviving longer and susceptible ones escaping at 20%, the fitness advantage of full resistance (100% survival vs. ~20% vs. ~67%) has determined the outcome. This is <em>Staphylococcus aureus</em> 1945–1965.`,
+    ],
+    completeText: `Over 6 generations, the resistance allele became dominant — even though susceptible bacteria weren't always fully eliminated. This is a more realistic model: antibiotics don't sterilize a population, they <strong>shift the odds</strong>. Resistant bacteria have a massive survival advantage (100% vs. ~20%), so their allele accumulates faster than susceptible alleles can recover. Run it again — the exact numbers vary, but the trend always favors resistance.`,
+  },
+  insect: {
+    scenario: `<strong>Monitor Round 2 — Pesticide Resistance in an Insect Population</strong><br>
+A farmer applies pesticide to a crop. Most insects are susceptible. Some carry <strong>one resistance allele</strong> (partial). A few carry <strong>two resistance alleles</strong> (full resistance).
+Each generation, the pesticide is applied — but 20% of susceptible insects survive by chance each round. Watch resistance build over 6 generations!`,
+    pressureName: 'Apply Pesticide',
+    genTitles: [
+      'Original population — before pesticide',
+      'After 1st pesticide spray',
+      'After 2nd pesticide spray',
+      'After 3rd pesticide spray',
+      'After 4th pesticide spray',
+      'After 5th pesticide spray',
+      'After 6th pesticide spray',
+    ],
+    rowLabels: [
+      'Gen 0 — before pesticide',
+      'Gen 1 — after 1st spray',
+      'Gen 2 — after 2nd spray',
+      'Gen 3 — after 3rd spray',
+      'Gen 4 — after 4th spray',
+      'Gen 5 — after 5th spray',
+      'Gen 6 — after 6th spray',
+    ],
+    insights: [
+      `<strong>Gen 1:</strong> The pesticide killed ~80% of susceptible insects — 20% survived by chance. Partially resistant insects had three outcomes: killed (33%), survived and stayed partial (33%), or upgraded to fully resistant (33%). Notice amber insects may persist — they have better odds than susceptible ones.`,
+      `<strong>Gen 2:</strong> Each survivor divided into two daughter cells with the same phenotype. Partial survivors produced partial daughters — they'll face the same 33-33-33 odds next round. Watch how amber cells gradually convert to green across generations rather than disappearing immediately.`,
+      `<strong>Gen 3:</strong> Three phenotypes may still coexist. Susceptible insects lose 80% each generation. Partial insects lose 33% but gain resistant offspring at 33% per round. Resistant insects lose none. The math strongly favors green over amber, and amber over white.`,
+      `<strong>Gen 4:</strong> Partial insects are acting as a bridge — each generation a third upgrade to fully resistant. This gradual conversion is more realistic than all-or-nothing selection: real organisms with partial resistance can persist and accumulate further mutations across generations.`,
+      `<strong>Gen 5:</strong> Susceptible insects are nearly depleted — the 80% kill rate erodes their numbers faster than reproduction compensates. Partial insects may still be present, slowly converting to resistant. Green cells are dominating.`,
+      `<strong>Gen 6:</strong> <strong>Resistance has dominated the population.</strong> Even with partial insects surviving longer and susceptible ones escaping at 20%, full resistance always wins — 100% survival compounds every generation. The farmer's pesticide is now largely ineffective.`,
+    ],
+    completeText: `Over 6 generations, resistant insects dominated — even with 20% of susceptible insects surviving each round. This reflects real biology: pesticides rarely kill 100% of a population, but they shift survival odds dramatically. Resistant insects (100% survival) consistently outcompete susceptible ones (~20% survival), so resistance alleles accumulate generation by generation. Run it again — variation is part of the biology.`,
+  }
+};
+
+// ── DEMO LOGIC ──
+let demoRunning = false;
+let predAnswered = { 1: false, 2: false };
+
+async function runDemo() {
+  demoRunning = true;
+  document.getElementById('demo-status').textContent = 'Demo running — watch the cells...';
+
+  // Init a demo population (separate from student population)
+  let demoPop = [];
+  let demoId = 10000;
+  const demoMakeId = () => ++demoId;
+  const guaranteed = [2,1,1];
+  guaranteed.forEach(type => demoPop.push({ type, id: demoMakeId() }));
+  const total = 26 + Math.floor(Math.random()*4);
+  for (let i = 3; i < total; i++) {
+    const r = Math.random();
+    demoPop.push({ type: r<0.06?2:r<0.20?1:0, id: demoMakeId() });
+  }
+
+  // Render Gen 0
+  renderDemoPetri(demoPop, true);
+  updateDemoStats(demoPop);
+  updateDemoFreq(demoPop);
+  document.getElementById('demo-gen-label').textContent = 'Demo — Generation 0';
+  document.getElementById('demo-gen-title').textContent = 'Original population — before penicillin';
+
+  await delay(2000);
+
+  for (let g = 1; g <= MAX_GENS; g++) {
+    // Spray
+    await demoSpray();
+    document.getElementById('demo-gen-label').textContent = 'Demo — Gen ' + (g-1) + ' → ' + g;
+    document.getElementById('demo-gen-title').textContent = 'Applying penicillin...';
+
+    // Apply pressure
+    const { survivors, outcomes } = applyPressure(demoPop);
+    await demoKill(demoPop, outcomes);
+    updateDemoStats(survivors);
+    updateDemoFreq(survivors);
+
+    await delay(500);
+
+    // Reproduce — simple version for demo (no animation, just replace)
+    demoPop = [];
+    survivors.forEach(cell => {
+      demoPop.push({ type: cell.type, id: demoMakeId() });
+      demoPop.push({ type: cell.type, id: demoMakeId() });
+    });
+    const TARGET = 28 + Math.floor(Math.random()*9);
+    if (demoPop.length > TARGET) { demoPop.sort(()=>Math.random()-0.5); demoPop = demoPop.slice(0,TARGET); }
+
+    renderDemoPetri(demoPop, true);
+    updateDemoStats(demoPop);
+    updateDemoFreq(demoPop);
+    document.getElementById('demo-gen-label').textContent = 'Demo — Generation ' + g;
+    document.getElementById('demo-gen-title').textContent = MODES['bacteria'].genTitles[g];
+
+    const insightBox = document.getElementById('demo-insight');
+    insightBox.innerHTML = MODES['bacteria'].insights[g-1];
+    insightBox.classList.add('show');
+
+    await delay(g < MAX_GENS ? 2200 : 1500);
+  }
+
+  document.getElementById('demo-status').textContent = '✓ Demo complete — now make your predictions below';
+  document.getElementById('prediction-panel').style.display = 'block';
+  document.getElementById('prediction-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  demoRunning = false;
+}
+
+function renderDemoPetri(pop, animIn) {
+  const grid = document.getElementById('demo-petri-grid');
+  grid.innerHTML = '';
+  const shuffled = [...pop].sort(() => Math.random()-0.5);
+  shuffled.forEach((cell, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cell-wrap' + (animIn ? ' anim-popin' : '');
+    wrap.dataset.id = cell.id;
+    wrap.innerHTML = svgForType(cell.type, cell.id);
+    if (animIn) wrap.style.animationDelay = (i * 12) + 'ms';
+    grid.appendChild(wrap);
+  });
+}
+
+function updateDemoStats(pop) {
+  const c = counts(pop);
+  document.getElementById('demo-gen-stats').innerHTML = `
+    <span class="stat-chip chip-r">${c[2]} resistant</span>
+    <span class="stat-chip chip-p">${c[1]} partial</span>
+    <span class="stat-chip chip-s">${c[0]} susceptible</span>
+    <span class="stat-chip chip-t">${c.total} total</span>`;
+}
+
+function updateDemoFreq(pop) {
+  const c = counts(pop); const t = c.total||1;
+  const pR = (c[2]/t*100).toFixed(0), pP = (c[1]/t*100).toFixed(0), pS = (c[0]/t*100).toFixed(0);
+  const r = document.getElementById('demo-freq-r'), p = document.getElementById('demo-freq-p'), s = document.getElementById('demo-freq-s');
+  r.style.width=pR+'%'; r.textContent=pR>8?pR+'% R':'';
+  p.style.width=pP+'%'; p.textContent=pP>8?pP+'% P':'';
+  s.style.width=pS+'%'; s.textContent=pS>8?pS+'% susc.':'';
+}
+
+async function demoSpray() {
+  const outer = document.getElementById('demo-petri-outer');
+  const dots = [];
+  for (let i = 0; i < 20; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'spray-dot';
+    const sz = 5 + Math.random()*7;
+    dot.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*90+2}%;top:${Math.random()*80+5}%;animation-delay:${Math.random()*300}ms;`;
+    outer.appendChild(dot); dots.push(dot);
+  }
+  await delay(500);
+  dots.forEach(d => d.remove());
+}
+
+async function demoKill(pop, outcomes) {
+  const grid = document.getElementById('demo-petri-grid');
+  const wraps = [...grid.querySelectorAll('.cell-wrap')];
+  wraps.forEach(wrap => {
+    const id = parseInt(wrap.dataset.id);
+    const outcome = outcomes.get(id);
+    if (outcome === 'killed') { wrap.classList.add('anim-die'); setTimeout(() => { wrap.innerHTML = svgDead(id); }, 180); }
+    else if (outcome === 'upgraded') { wrap.classList.add('anim-upgrade'); setTimeout(() => { wrap.innerHTML = svgForType(2, id); }, 180); }
+  });
+  await delay(700);
+  wraps.forEach(wrap => { if (outcomes.get(parseInt(wrap.dataset.id)) === 'killed') wrap.remove(); });
+}
+
+// ── PREDICTION LOGIC ──
+function predCheck(n) {
+  const ta = document.getElementById(`pred-q${n}-input`);
+  const btn = document.getElementById(`pred-q${n}-submit`);
+  const note = document.getElementById(`pred-q${n}-note`);
+  const len = ta.value.trim().length;
+  btn.disabled = len < 20;
+  note.textContent = len < 20 ? `Write at least 20 characters → (${len}/20)` : '✓ Ready to save';
+}
+
+function predSubmit(n) {
+  if (predAnswered[n]) return;
+  const ta = document.getElementById(`pred-q${n}-input`);
+  const btn = document.getElementById(`pred-q${n}-submit`);
+  const fb = document.getElementById(`pred-q${n}-fb`);
+  ta.disabled = true; btn.disabled = true;
+  fb.className = 'q-feedback show good';
+  fb.innerHTML = '✓ Prediction saved. You can compare this to your actual results after you run the simulation.';
+  predAnswered[n] = true;
+  document.getElementById(`pred-q${n}-block`).classList.add('answered');
+  if (predAnswered[1] && predAnswered[2]) {
+    document.getElementById('pred-launch-wrap').style.display = 'block';
+    document.getElementById('pred-launch-wrap').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+}
+
+function launchStudentRun() {
+  document.getElementById('student-panel').style.display = 'block';
+  document.getElementById('mode-bar').style.display = 'flex';
+  setMode('bacteria');
+  document.getElementById('student-panel').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ── CFU LOGIC (updated for 4 questions) ──
+let cfuAnswered = { 1:false, 2:false, 3:false, 4:false };
+
+function cfuMC(qNum, btn, correct) {
+  if (cfuAnswered[qNum]) return;
+  const opts = btn.closest('.q-mc').querySelectorAll('.q-opt');
+  const fb = document.getElementById(`cfu-q${qNum}-fb`);
+  opts.forEach(o => o.disabled = true);
+  if (correct) {
+    btn.classList.add('correct');
+    fb.className = 'q-feedback show good';
+    if (qNum===1) fb.innerHTML = '✓ Correct. Resistant bacteria have 100% survival every generation. Susceptible have 20%. That fitness gap compounds across 6 generations — resistance always accumulates faster. This is directional natural selection.';
+    if (qNum===3) fb.innerHTML = '✓ Correct. Each antibiotic created a fresh selective pressure. The simulation showed you this pattern for one drug — MRSA experienced it repeatedly over decades, accumulating resistance to each new drug one at a time.';
+  } else {
+    btn.classList.add('wrong');
+    opts.forEach(o => { if (o.getAttribute('onclick').includes(',true)')) o.classList.add('correct'); });
+    fb.className = 'q-feedback show hint';
+    if (qNum===1) fb.innerHTML = '💡 Think: resistant bacteria keep 100% of offspring every round, susceptible keep only 20%. That gap compounds over 6 generations. The correct answer is highlighted above.';
+    if (qNum===3) fb.innerHTML = '💡 Think about the simulation: even 1% surviving is enough to restart the cycle. Each new antibiotic is a new selective pressure — the same mechanism repeats. The correct answer is highlighted above.';
+  }
+  cfuAnswered[qNum] = true;
+  document.getElementById(`cfu-q${qNum}-block`).classList.add('answered');
+  checkCFUComplete();
+}
+
+function cfuSACheck(qNum, minChars, btnId) {
+  const ta = document.getElementById(`cfu-q${qNum}-input`);
+  const btn = document.getElementById(btnId);
+  btn.disabled = ta.value.trim().length < minChars;
+}
+
+function cfuSASubmit(qNum) {
+  if (cfuAnswered[qNum]) return;
+  const ta = document.getElementById(`cfu-q${qNum}-input`);
+  const btn = document.getElementById(`cfu-q${qNum}-submit`);
+  const fb = document.getElementById(`cfu-q${qNum}-fb`);
+  ta.disabled = true; btn.disabled = true;
+  fb.className = 'q-feedback show good';
+  if (qNum===2) fb.innerHTML = '✓ Saved. Comparing your prediction to your actual results is exactly what scientists do — this is the core of the scientific method.';
+  if (qNum===4) fb.innerHTML = '✓ Saved. Real strategies include: rotating antibiotics (so no single drug provides consistent selection pressure), using phage therapy (viruses that attack bacteria, harder to develop resistance to), developing drugs that target essential non-mutable functions, and stewardship programs that reduce unnecessary antibiotic use.';
+  cfuAnswered[qNum] = true;
+  document.getElementById(`cfu-q${qNum}-block`).classList.add('answered');
+  checkCFUComplete();
+}
+
+function checkCFUComplete() {
+  if (cfuAnswered[1] && cfuAnswered[2] && cfuAnswered[3] && cfuAnswered[4]) {
+    document.getElementById('cfu-complete-msg').classList.add('show');
+    document.querySelector('.btn-reset').disabled = false;
+  }
+}
+
+// ── INIT ──
+setTimeout(runDemo, 800);
+</script>
+</body>
+</html>
