@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch & Predict — Natural Selection</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+  :root {
+    --green:#1D9E75;--green-dark:#085041;--green-light:#E1F5EE;
+    --red:#C0392B;--amber:#d97706;--amber-light:#fef3c7;
+    --navy:#1a2744;--navy-mid:#2c3d6b;--gold:#f0c040;
+    --off:#f7f6f2;--border:#dddbd4;--text:#1e1d1a;--muted:#6b6960;
+    --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--navy);color:var(--off);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+
+  header{width:100%;background:var(--navy-mid);border-bottom:2px solid var(--gold);padding:14px 32px;}
+  header h1{font-family:var(--mono);font-size:15px;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;}
+  header p{font-size:13px;color:#a8b4d4;margin-top:2px;}
+
+  main{width:100%;max-width:900px;padding:24px 24px 60px;display:flex;flex-direction:column;gap:20px;}
+
+  /* STEP PANELS */
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade-in .4s ease;}
+  @keyframes fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  /* WATCH PANEL */
+  .watch-card{background:var(--off);border-radius:12px;padding:20px;color:var(--text);}
+  .watch-label{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .watch-title{font-size:18px;font-weight:600;margin-bottom:14px;}
+  .petri-outer{background:white;border:1.5px solid var(--border);border-radius:10px;padding:14px;min-height:90px;position:relative;margin-bottom:12px;}
+  .phase-overlay{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.06em;opacity:0;pointer-events:none;transition:opacity .3s;text-transform:uppercase;}
+  .phase-overlay.killing{background:rgba(192,57,43,.10);color:var(--red);opacity:1;}
+  .phase-overlay.dividing{background:rgba(29,158,117,.08);color:var(--green-dark);opacity:1;}
+  .petri-grid{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;position:relative;z-index:1;}
+  .cell-wrap{width:40px;height:40px;flex-shrink:0;}
+  .cell-wrap svg{width:100%;height:100%;display:block;overflow:visible;}
+  @keyframes cell-die{0%{opacity:1;transform:scale(1)}50%{transform:scale(1.1)}100%{opacity:.2;transform:scale(.85)}}
+  @keyframes cell-upgrade{0%{transform:scale(1)}35%{transform:scale(1.3);filter:brightness(1.5)}100%{transform:scale(1);filter:brightness(1)}}
+  @keyframes pop-in{0%{transform:scale(0);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+  .anim-die{animation:cell-die .55s ease forwards;}
+  .anim-upgrade{animation:cell-upgrade .5s ease forwards;}
+  .anim-popin{animation:pop-in .4s cubic-bezier(.34,1.56,.64,1) both;}
+  .spray-dot{position:absolute;border-radius:50%;pointer-events:none;z-index:5;background:rgba(192,57,43,.6);animation:spray .5s ease forwards;}
+  @keyframes spray{0%{transform:scale(0);opacity:.9}60%{transform:scale(1.2);opacity:.7}100%{opacity:0}}
+
+  .freq-label{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .freq-bar{height:22px;border-radius:5px;overflow:hidden;display:flex;background:#e8e8e4;border:1px solid var(--border);}
+  .fr{height:100%;background:var(--green);transition:width .6s ease;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:white;overflow:hidden;white-space:nowrap;}
+  .fp{height:100%;background:var(--amber);transition:width .6s ease;}
+  .fs{height:100%;background:#b0ada5;transition:width .6s ease;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:#333;overflow:hidden;white-space:nowrap;}
+
+  .watch-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .stat{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:20px;}
+  .stat-r{background:var(--green-light);color:var(--green-dark);}
+  .stat-p{background:var(--amber-light);color:var(--amber);}
+  .stat-s{background:#f0f0f0;color:#555;}
+  .stat-t{background:#e8e8e4;color:#333;}
+
+  .watch-status{font-family:var(--mono);font-size:12px;color:#a8b4d4;text-align:center;margin-top:10px;letter-spacing:.04em;}
+
+  /* LEGEND */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:#f0eeea;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;}
+  .legend-title{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+  .legend-item{display:flex;align-items:center;gap:6px;}
+
+  /* QUESTION / PREDICTION */
+  .q-card{background:var(--navy-mid);border:1.5px solid var(--gold);border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
+  .q-label{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);}
+  .q-text{font-size:15px;font-weight:600;color:#f0eeea;line-height:1.55;}
+  .q-sub{font-size:13px;color:#a8b4d4;line-height:1.6;}
+
+  .mc-opts{display:flex;flex-direction:column;gap:8px;}
+  .mc-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;border:1.5px solid #344870;background:#1a2744;cursor:pointer;font-size:13.5px;color:#c8d4ee;text-align:left;width:100%;font-family:var(--sans);transition:all .15s;}
+  .mc-opt:hover:not(:disabled){border-color:#6a8fd0;background:#243560;}
+  .mc-opt.correct{border-color:var(--green);background:var(--green-light);color:var(--green-dark);font-weight:600;}
+  .mc-opt.wrong{border-color:var(--red);background:#2a1a1a;color:#e88;opacity:.65;}
+  .mc-opt:disabled{cursor:default;}
+  .opt-letter{font-family:var(--mono);font-size:11px;font-weight:600;min-width:20px;padding-top:1px;}
+
+  .fb{padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.6;display:none;}
+  .fb.show{display:block;animation:fade-in .25s ease;}
+  .fb.good{background:var(--green-light);border-left:3px solid var(--green);color:#0a4030;}
+  .fb.hint{background:#fff8dc;border-left:3px solid var(--gold);color:#5a3700;}
+
+  textarea.pred{width:100%;min-height:80px;padding:10px 12px;background:#1a2744;border:1.5px solid #344870;border-radius:8px;font-family:var(--sans);font-size:13.5px;color:#f0eeea;resize:vertical;outline:none;transition:border-color .15s;}
+  textarea.pred:focus{border-color:var(--green);}
+  .char-note{font-family:var(--mono);font-size:11px;color:#6a7da8;text-align:right;margin-top:4px;}
+
+  .btn-launch{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:12px 32px;border-radius:8px;border:none;background:var(--green);color:white;cursor:pointer;transition:all .15s;display:none;align-self:center;}
+  .btn-launch:hover{background:var(--green-dark);}
+  .btn-launch.show{display:block;animation:fade-in .4s ease;}
+  .launch-msg{font-size:13px;color:#a0d8c0;text-align:center;display:none;}
+  .launch-msg.show{display:block;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🦠 Watch & Predict — Natural Selection</h1>
+  <p>Biology 1 · Unit 6 · Lesson 113 · Complete before the simulation</p>
+</header>
+
+<main>
+
+  <!-- ═══ PANEL 1: WATCH ═══ -->
+  <div class="panel active" id="panel-watch">
+
+    <div style="background:#1f2f54;border:1px solid #344870;border-left:4px solid var(--gold);border-radius:8px;padding:14px 18px;font-size:13.5px;color:#c8d4ee;line-height:1.65;">
+      <strong style="color:var(--gold);">👀 Watch — Don't Touch Anything</strong><br>
+      The simulation will run automatically through 6 generations. Watch what happens to each type of bacterium and how the bar at the bottom changes. You'll answer questions afterward.
+    </div>
+
+    <div class="legend">
+      <span class="legend-title">Key:</span>
+      <span class="legend-item"><span id="leg-r" style="display:inline-block;width:22px;height:22px;vertical-align:middle;"></span> Resistant — always survives</span>
+      <span class="legend-item"><span id="leg-p" style="display:inline-block;width:22px;height:22px;vertical-align:middle;"></span> Partial — 67% survive</span>
+      <span class="legend-item"><span id="leg-s" style="display:inline-block;width:22px;height:22px;vertical-align:middle;"></span> Susceptible — 20% survive</span>
+    </div>
+
+    <div class="watch-card">
+      <div class="watch-label" id="watch-label">Generation 0</div>
+      <div class="watch-title" id="watch-title">Original population — before penicillin</div>
+      <div class="petri-outer" id="watch-petri-outer">
+        <div class="phase-overlay" id="watch-phase"></div>
+        <div class="petri-grid" id="watch-grid"></div>
+      </div>
+      <div class="freq-label">Resistance allele frequency — watch this shift</div>
+      <div class="freq-bar" id="watch-freq-bar">
+        <div class="fr" id="wfr" style="width:0%"></div>
+        <div class="fp" id="wfp" style="width:0%"></div>
+        <div class="fs" id="wfs" style="width:100%">susceptible</div>
+      </div>
+      <div class="watch-stats" id="watch-stats"></div>
+    </div>
+    <div class="watch-status" id="watch-status">Starting in 1 second...</div>
+  </div>
+
+  <!-- ═══ PANEL 2: QUESTION + PREDICTION ═══ -->
+  <div class="panel" id="panel-questions">
+
+    <!-- Q1: about chance -->
+    <div class="q-card" id="q1-card">
+      <div class="q-label">Question 1 of 2 — Answer before predicting</div>
+      <div class="q-text">In the demo, some susceptible bacteria survived even though 80% were killed each round. What is the correct explanation for why some survived?</div>
+      <div class="mc-opts" id="q1-opts">
+        <button class="mc-opt" onclick="answerQ1(this,false)"><span class="opt-letter">A</span>They developed a resistance mutation just in time.</button>
+        <button class="mc-opt" onclick="answerQ1(this,false)"><span class="opt-letter">B</span>The antibiotic was weaker in some generations than others.</button>
+        <button class="mc-opt" onclick="answerQ1(this,true)"><span class="opt-letter">C</span>Survival involved chance — 20% of susceptible bacteria escaped randomly each round, not because they were resistant.</button>
+        <button class="mc-opt" onclick="answerQ1(this,false)"><span class="opt-letter">D</span>Susceptible bacteria hid behind resistant ones to avoid the antibiotic.</button>
+      </div>
+      <div class="fb" id="q1-fb"></div>
+    </div>
+
+    <!-- Q2: prediction — shown after Q1 answered -->
+    <div class="q-card" id="q2-card" style="display:none;">
+      <div class="q-label">Question 2 of 2 — Make a Prediction</div>
+      <div class="q-text">Now you will run the simulation yourself — and your results will be different from the demo because chance is involved.</div>
+      <div class="q-sub">Predict: how many generations do you think it will take for resistance to become the <strong>majority</strong> (more than 50%) of the population in YOUR run? Will it be faster or slower than the demo, and why?</div>
+      <textarea class="pred" id="pred-input" placeholder="I predict resistance will become the majority by generation ___ because..." oninput="predCheck()"></textarea>
+      <div class="char-note" id="pred-note">Write at least 20 characters →</div>
+      <div class="fb" id="pred-fb" style="display:none;"></div>
+      <button class="btn-launch" id="launch-btn" onclick="launchSim()">▶ Run the Simulation →</button>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── SVG helpers ──────────────────────────────────────
+function bSeed(id){return(id*2654435761)>>>0;}
+function svgForType(t,id=0){
+  const colors={
+    2:{body:'#1D9E75',stroke:'#085041',nucleus:'#085041',dna:'#1D9E75',ribo:'#0a5c42'},
+    1:{body:'#d97706',stroke:'#92560a',nucleus:'#92560a',dna:'#fef3c7',ribo:'#78450a'},
+    0:{body:'white',  stroke:'#1D9E75',nucleus:'#c8ece0',dna:'#1D9E75', ribo:'#a8dece'},
+  };
+  const c=colors[t],rot=bSeed(id)%360,pl=6+(bSeed(id)%4);
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})">
+    <g stroke="${c.stroke}" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".85">
+      <line x1="-14" y1="-5" x2="${-14-pl}" y2="-9"/><line x1="-14" y1="0" x2="${-14-pl}" y2="1"/>
+      <line x1="-14" y1="5" x2="${-14-pl}" y2="9"/><line x1="14" y1="-5" x2="${14+pl}" y2="-9"/>
+      <line x1="14" y1="0" x2="${14+pl}" y2="1"/><line x1="14" y1="5" x2="${14+pl}" y2="9"/>
+      <line x1="-4" y1="-9" x2="-5" y2="${-9-pl}"/><line x1="4" y1="-9" x2="5" y2="${-9-pl}"/>
+    </g>
+    <ellipse cx="0" cy="0" rx="14" ry="9" fill="${c.body}" stroke="${c.stroke}" stroke-width="1.8"/>
+    <ellipse cx="0" cy="0" rx="6" ry="4" fill="${c.nucleus}" opacity=".55"/>
+    <path d="M-5,0 Q-2.5,-2.5 0,0 Q2.5,2.5 5,0" stroke="${c.dna}" stroke-width="1" fill="none" opacity=".9"/>
+    <circle cx="-8" cy="-3" r="1.4" fill="${c.ribo}" opacity=".7"/>
+    <circle cx="8" cy="-3" r="1.4" fill="${c.ribo}" opacity=".7"/>
+  </g></svg>`;
+}
+function svgDead(id=0){
+  const rot=bSeed(id)%360;
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})" opacity=".3">
+    <ellipse cx="0" cy="0" rx="14" ry="9" fill="none" stroke="#C0392B" stroke-width="1.8"/>
+    <line x1="-8" y1="-5" x2="8" y2="5" stroke="#C0392B" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="8" y1="-5" x2="-8" y2="5" stroke="#C0392B" stroke-width="2.2" stroke-linecap="round"/>
+  </g></svg>`;
+}
+
+// Render legend icons
+document.getElementById('leg-r').innerHTML=svgForType(2,1);
+document.getElementById('leg-p').innerHTML=svgForType(1,2);
+document.getElementById('leg-s').innerHTML=svgForType(0,3);
+
+// ── Biology ──────────────────────────────────────────
+let idC=0;
+function mkId(){return ++idC;}
+
+function initPop(){
+  const pop=[];
+  [{type:2},{type:1},{type:1}].forEach(c=>pop.push({type:c.type,id:mkId()}));
+  const total=26+Math.floor(Math.random()*4);
+  for(let i=3;i<total;i++){const r=Math.random();pop.push({type:r<.06?2:r<.20?1:0,id:mkId()});}
+  for(let i=pop.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pop[i],pop[j]]=[pop[j],pop[i]];}
+  return pop;
+}
+
+function applyPressure(pop){
+  const outcomes=new Map(),survivors=[];
+  pop.forEach(cell=>{
+    if(cell.type===0){
+      if(Math.random()<.8){outcomes.set(cell.id,'killed');}
+      else{outcomes.set(cell.id,'survive');survivors.push({type:0,id:cell.id});}
+    } else if(cell.type===1){
+      const r=Math.random();
+      if(r<.33){outcomes.set(cell.id,'killed');}
+      else if(r<.67){outcomes.set(cell.id,'survive');survivors.push({type:1,id:cell.id});}
+      else{outcomes.set(cell.id,'upgraded');survivors.push({type:2,id:cell.id});}
+    } else {
+      outcomes.set(cell.id,'survive');survivors.push({type:2,id:cell.id});
+    }
+  });
+  return{outcomes,survivors};
+}
+
+function reproducePop(survivors){
+  const next=[];
+  survivors.forEach(c=>{next.push({type:c.type,id:mkId()});next.push({type:c.type,id:mkId()});});
+  const T=28+Math.floor(Math.random()*9);
+  if(next.length>T){next.sort(()=>Math.random()-.5);return next.slice(0,T);}
+  return next;
+}
+
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── Render helpers ───────────────────────────────────
+function renderGrid(pop,animIn=false){
+  const grid=document.getElementById('watch-grid');
+  grid.innerHTML='';
+  [...pop].sort(()=>Math.random()-.5).forEach((cell,i)=>{
+    const w=document.createElement('div');
+    w.className='cell-wrap'+(animIn?' anim-popin':'');
+    w.dataset.id=cell.id;
+    w.innerHTML=svgForType(cell.type,cell.id);
+    if(animIn)w.style.animationDelay=(i*12)+'ms';
+    grid.appendChild(w);
+  });
+}
+
+function renderFreq(pop){
+  const c={0:0,1:0,2:0};pop.forEach(x=>c[x.type]++);const t=pop.length||1;
+  const pR=(c[2]/t*100).toFixed(0),pP=(c[1]/t*100).toFixed(0),pS=(c[0]/t*100).toFixed(0);
+  const r=document.getElementById('wfr'),p=document.getElementById('wfp'),s=document.getElementById('wfs');
+  r.style.width=pR+'%';r.textContent=pR>8?pR+'% R':'';
+  p.style.width=pP+'%';
+  s.style.width=pS+'%';s.textContent=pS>8?pS+'% S':'';
+}
+
+function renderStats(pop){
+  const c={0:0,1:0,2:0};pop.forEach(x=>c[x.type]++);
+  document.getElementById('watch-stats').innerHTML=`
+    <span class="stat stat-r">${c[2]} resistant</span>
+    <span class="stat stat-p">${c[1]} partial</span>
+    <span class="stat stat-s">${c[0]} susceptible</span>
+    <span class="stat stat-t">${pop.length} total</span>`;
+}
+
+function setPhase(cls,txt){
+  const ov=document.getElementById('watch-phase');
+  ov.className='phase-overlay'+(cls?' '+cls:'');
+  ov.textContent=txt||'';
+}
+
+const GEN_TITLES=[
+  'Original population — before penicillin',
+  'After 1st penicillin treatment',
+  'After 2nd penicillin treatment',
+  'After 3rd penicillin treatment',
+  'After 4th penicillin treatment',
+  'After 5th penicillin treatment',
+  'After 6th penicillin treatment',
+];
+
+// ── Spray animation ──────────────────────────────────
+async function doSpray(){
+  const outer=document.getElementById('watch-petri-outer'),dots=[];
+  for(let i=0;i<18;i++){
+    const d=document.createElement('div');d.className='spray-dot';
+    const sz=5+Math.random()*7;
+    d.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*90+2}%;top:${Math.random()*80+5}%;animation-delay:${Math.random()*300}ms;`;
+    outer.appendChild(d);dots.push(d);
+  }
+  await delay(550);dots.forEach(d=>d.remove());
+}
+
+// ── Kill animation ───────────────────────────────────
+async function doKill(outcomes){
+  const grid=document.getElementById('watch-grid'),wraps=[...grid.querySelectorAll('.cell-wrap')];
+  wraps.forEach(w=>{
+    const id=parseInt(w.dataset.id),o=outcomes.get(id);
+    if(o==='killed'){w.classList.add('anim-die');setTimeout(()=>{w.innerHTML=svgDead(id);},180);}
+    else if(o==='upgraded'){w.classList.add('anim-upgrade');setTimeout(()=>{w.innerHTML=svgForType(2,id);},180);}
+  });
+  await delay(700);
+  wraps.forEach(w=>{if(outcomes.get(parseInt(w.dataset.id))==='killed')w.remove();else w.classList.remove('anim-die','anim-upgrade');});
+}
+
+// ── Main demo runner ─────────────────────────────────
+async function runDemo(){
+  document.getElementById('watch-status').textContent='Demo running — watch carefully...';
+  let pop=initPop();
+  renderGrid(pop,true);renderFreq(pop);renderStats(pop);
+  document.getElementById('watch-label').textContent='Generation 0';
+  document.getElementById('watch-title').textContent=GEN_TITLES[0];
+  await delay(2000);
+
+  for(let g=1;g<=6;g++){
+    // Spray
+    setPhase('killing','Applying penicillin...');
+    document.getElementById('watch-label').textContent=`Gen ${g-1} → ${g}`;
+    document.getElementById('watch-title').textContent='Applying penicillin...';
+    await doSpray();
+
+    // Kill
+    const{outcomes,survivors}=applyPressure(pop);
+    await doKill(survivors.length===0?new Map([...pop.map(c=>[c.id,'killed'])]):outcomes);
+    if(survivors.length===0){
+      document.getElementById('watch-status').textContent='All bacteria eliminated this run — click reload to try again.';
+      return;
+    }
+    renderStats(survivors);renderFreq(survivors);
+    setPhase('','');
+    await delay(400);
+
+    // Reproduce — simple re-render, no mitosis animation to keep it fast
+    setPhase('dividing','Binary fission...');
+    pop=reproducePop(survivors);
+    await delay(600);
+    setPhase('','');
+    renderGrid(pop,true);renderFreq(pop);renderStats(pop);
+    document.getElementById('watch-label').textContent=`Generation ${g}`;
+    document.getElementById('watch-title').textContent=GEN_TITLES[g];
+    await delay(g<6?1800:1200);
+  }
+
+  document.getElementById('watch-status').textContent='✓ Demo complete — answer the questions below';
+  // Show questions panel
+  await delay(600);
+  document.getElementById('panel-watch').classList.remove('active');
+  document.getElementById('panel-questions').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Q1 answer ────────────────────────────────────────
+let q1done=false;
+function answerQ1(btn,correct){
+  if(q1done)return;
+  const opts=document.getElementById('q1-opts').querySelectorAll('.mc-opt');
+  const fb=document.getElementById('q1-fb');
+  opts.forEach(o=>o.disabled=true);
+  if(correct){
+    btn.classList.add('correct');
+    fb.className='fb show good';
+    fb.innerHTML='✓ Correct. 20% of susceptible bacteria survive each round by chance — not because they\'re resistant. This stochastic survival means your run will look different from the demo, but the overall trend will be the same.';
+  } else {
+    btn.classList.add('wrong');
+    opts.forEach(o=>{if(o.getAttribute('onclick').includes(',true)'))o.classList.add('correct');});
+    fb.className='fb show hint';
+    fb.innerHTML='💡 Survival involves chance. Even without resistance, 20% of susceptible bacteria escape the antibiotic randomly each round — not by being resistant, just by luck. The correct answer is highlighted above.';
+  }
+  q1done=true;
+  // Show prediction question
+  setTimeout(()=>{
+    document.getElementById('q2-card').style.display='block';
+    document.getElementById('q2-card').scrollIntoView({behavior:'smooth',block:'start'});
+  },800);
+}
+
+// ── Prediction check ─────────────────────────────────
+function predCheck(){
+  const ta=document.getElementById('pred-input');
+  const btn=document.getElementById('launch-btn');
+  const note=document.getElementById('pred-note');
+  const len=ta.value.trim().length;
+  note.textContent=len<20?`Write at least 20 characters → (${len}/20)`:'✓ Ready — click the button below to launch';
+  note.style.color=len>=20?'var(--green)':'#6a7da8';
+  if(len>=20){
+    btn.classList.add('show');
+    document.getElementById('pred-fb').style.display='block';
+    document.getElementById('pred-fb').innerHTML='✓ Prediction saved. You\'ll be able to compare this to your actual results after the simulation.';
+    document.getElementById('pred-fb').className='fb show good';
+  } else {
+    btn.classList.remove('show');
+  }
+}
+
+// ── Launch ───────────────────────────────────────────
+function launchSim(){
+  window.location.href='L113_Simulation.html';
+}
+
+// ── Start ────────────────────────────────────────────
+setTimeout(runDemo, 800);
+</script>
+</body>
+</html>
