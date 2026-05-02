@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Natural Selection Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+  :root {
+    --green:#1D9E75;--green-dark:#085041;--green-light:#E1F5EE;
+    --red:#C0392B;--amber:#d97706;--amber-light:#fef3c7;
+    --navy:#1a2744;--navy-mid:#2c3d6b;--gold:#f0c040;
+    --off:#f7f6f2;--border:#dddbd4;--text:#1e1d1a;--muted:#6b6960;
+    --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--navy);color:var(--off);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+  header{width:100%;background:var(--navy-mid);border-bottom:2px solid var(--gold);padding:14px 32px;display:flex;align-items:baseline;gap:16px;}
+  header h1{font-family:var(--mono);font-size:15px;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;}
+  header p{font-size:13px;color:#a8b4d4;}
+  .mode-bar{width:100%;background:#141e38;display:flex;padding:0 32px;border-bottom:1px solid #2a3a60;}
+  .mode-btn{font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:11px 20px;background:none;border:none;border-bottom:3px solid transparent;color:#6a7da8;cursor:pointer;transition:all .18s;}
+  .mode-btn:hover{color:#c0cbe8;}
+  .mode-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+  main{width:100%;max-width:1080px;padding:22px 24px 48px;display:flex;flex-direction:column;gap:18px;}
+  .scenario{background:#1f2f54;border:1px solid #344870;border-left:4px solid var(--gold);border-radius:8px;padding:14px 20px;font-size:13.5px;line-height:1.65;color:#c8d4ee;}
+  .scenario strong{color:var(--gold);}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:10px 16px;background:#f0eeea;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12.5px;}
+  .legend-title{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .gen-card{background:var(--off);border-radius:10px;padding:18px 20px;color:var(--text);}
+  .gen-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .gen-label{font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+  .gen-title{font-size:16px;font-weight:600;color:var(--text);margin-top:3px;}
+  .gen-stats{display:flex;gap:10px;flex-wrap:wrap;}
+  .stat-chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:20px;font-weight:500;}
+  .chip-r{background:var(--green-light);color:var(--green-dark);}
+  .chip-p{background:var(--amber-light);color:var(--amber);}
+  .chip-s{background:#f0f0f0;color:#555;}
+  .chip-t{background:#e8e8e8;color:#333;}
+  .petri-outer{background:white;border:1.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;min-height:100px;position:relative;}
+  .phase-overlay{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.06em;opacity:0;pointer-events:none;transition:opacity .3s;text-transform:uppercase;}
+  .phase-overlay.killing{background:rgba(192,57,43,.10);color:var(--red);opacity:1;}
+  .phase-overlay.dividing{background:rgba(29,158,117,.08);color:var(--green-dark);opacity:1;}
+  .petri-grid{display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start;position:relative;z-index:1;}
+  .cell-wrap{width:44px;height:44px;flex-shrink:0;position:relative;}
+  .cell-wrap svg{width:100%;height:100%;display:block;overflow:visible;}
+  @keyframes cell-die{0%{transform:scale(1);opacity:1}40%{transform:scale(1.12);opacity:.8}100%{transform:scale(.85);opacity:.2}}
+  @keyframes cell-upgrade{0%{transform:scale(1)}30%{transform:scale(1.3);filter:brightness(1.4)}60%{transform:scale(.9)}100%{transform:scale(1);filter:brightness(1)}}
+  @keyframes pop-in{0%{transform:scale(0);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+  @keyframes pre-divide{0%{transform:scale(1);opacity:1}35%{transform:scale(1.2);opacity:1}65%{transform:scaleX(1.3) scaleY(.78);opacity:1}100%{transform:scale(0);opacity:0}}
+  .cell-wrap.anim-die{animation:cell-die .6s ease forwards;}
+  .cell-wrap.anim-upgrade{animation:cell-upgrade .6s ease forwards;}
+  .cell-wrap.anim-popin{animation:pop-in .45s cubic-bezier(.34,1.56,.64,1) both;}
+  .cell-wrap.anim-prediv{animation:pre-divide .55s ease-in forwards;}
+  .daughter{position:absolute;width:44px;height:44px;pointer-events:none;z-index:20;}
+  .daughter svg{width:100%;height:100%;overflow:visible;}
+  @keyframes daughter-fly{0%{transform:translate(0,0) scale(.55);opacity:.8}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:1}}
+  .daughter.fly{animation:daughter-fly .6s cubic-bezier(.22,1,.36,1) forwards;}
+  .spray-dot{position:absolute;border-radius:50%;pointer-events:none;z-index:5;background:rgba(192,57,43,.55);animation:spray-land .5s ease forwards;}
+  @keyframes spray-land{0%{transform:scale(0);opacity:.9}60%{transform:scale(1.2);opacity:.7}100%{transform:scale(1);opacity:0}}
+  .freq-section{margin-top:12px;}
+  .freq-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .freq-bar-wrap{height:24px;border-radius:6px;overflow:hidden;display:flex;background:#e8e8e4;border:1px solid var(--border);}
+  .freq-seg{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:500;color:white;transition:width .7s cubic-bezier(.4,0,.2,1);overflow:hidden;white-space:nowrap;min-width:0;}
+  .freq-seg.fr{background:var(--green);}
+  .freq-seg.fp{background:var(--amber);}
+  .freq-seg.fs{background:#b0ada5;color:#333;}
+  .insight{background:var(--green-light);border:1px solid #9fe1cb;border-left:4px solid var(--green);border-radius:8px;padding:13px 17px;font-size:13.5px;line-height:1.65;color:#0a4030;display:none;margin-top:12px;}
+  .insight.show{display:block;animation:slide-in .3s ease;}
+  @keyframes slide-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+  .insight strong{color:var(--green-dark);}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;}
+  .btn{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:10px 22px;border-radius:6px;border:none;cursor:pointer;transition:all .15s;}
+  .btn-primary{background:var(--green);color:white;}
+  .btn-primary:hover:not(:disabled){background:var(--green-dark);}
+  .btn-primary:disabled{background:#a0cbbf;cursor:not-allowed;}
+  .btn-reset{background:none;border:1.5px solid #c0c0b4;color:var(--muted);}
+  .btn-reset:hover{border-color:var(--text);color:var(--text);}
+  .step-note{font-size:12px;color:var(--muted);font-style:italic;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:8px 10px;text-align:center;border-bottom:2px solid var(--border);background:#f0eeea;}
+  th:first-child{text-align:left;}
+  td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--text);font-weight:500;}
+  td:first-child{text-align:left;font-size:12px;color:var(--muted);font-weight:400;}
+  tr.row-active td{background:#edf9f4;}
+  tr.row-active td:first-child{border-left:3px solid var(--green);}
+  .val-hidden{color:#c8c4bc;font-style:italic;font-size:11px;font-weight:400;}
+  .pct-hi{color:var(--green-dark);font-weight:700;}
+  .pct-lo{color:var(--red);font-weight:600;}
+  .cfu-wrap{background:var(--navy-mid);border:1.5px solid var(--gold);border-radius:10px;padding:20px 22px;display:none;flex-direction:column;gap:16px;}
+  .cfu-wrap.show{display:flex;animation:slide-in .4s ease;}
+  .cfu-title{font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);}
+  .cfu-sub{font-size:13px;color:#a8b4d4;}
+  .cfu-q{background:#1a2744;border:1px solid #344870;border-radius:8px;padding:14px 16px;}
+  .cfu-q.answered{border-color:var(--green);}
+  .cfu-q-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+  .cfu-q-text{font-size:14px;font-weight:600;color:#f0eeea;line-height:1.55;margin-bottom:12px;}
+  .q-mc{display:flex;flex-direction:column;gap:7px;}
+  .q-opt{display:flex;align-items:flex-start;gap:10px;padding:9px 13px;border-radius:7px;border:1.5px solid #344870;background:#1a2744;cursor:pointer;font-size:13px;color:#c8d4ee;transition:all .15s;text-align:left;width:100%;font-family:var(--sans);}
+  .q-opt:hover:not(:disabled){border-color:#6a8fd0;background:#243560;}
+  .q-opt.correct{border-color:var(--green);background:var(--green-light);color:var(--green-dark);font-weight:600;}
+  .q-opt.wrong{border-color:var(--red);background:#2a1a1a;color:#e88;opacity:.65;}
+  .q-opt:disabled{cursor:default;}
+  .q-opt-letter{font-family:var(--mono);font-size:11px;font-weight:600;min-width:18px;padding-top:1px;}
+  .q-sa{width:100%;min-height:68px;padding:10px 12px;background:#1a2744;border:1.5px solid #344870;border-radius:7px;font-family:var(--sans);font-size:13px;color:#f0eeea;resize:vertical;outline:none;transition:border-color .15s;}
+  .q-sa:focus{border-color:var(--green);}
+  .q-sa-btn{margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:7px 16px;border-radius:5px;border:none;background:var(--green);color:white;cursor:pointer;transition:all .15s;}
+  .q-sa-btn:hover:not(:disabled){background:var(--green-dark);}
+  .q-sa-btn:disabled{background:#4a8a70;cursor:not-allowed;}
+  .q-fb{margin-top:10px;padding:9px 13px;border-radius:7px;font-size:13px;line-height:1.6;display:none;}
+  .q-fb.show{display:block;animation:slide-in .25s ease;}
+  .q-fb.good{background:var(--green-light);border-left:3px solid var(--green);color:#0a4030;}
+  .q-fb.hint{background:#fff8dc;border-left:3px solid var(--gold);color:#5a3700;}
+  .cfu-done{background:#0a4030;border:1.5px solid var(--green);border-radius:8px;padding:14px 16px;font-size:13.5px;color:#d4f5e5;line-height:1.65;display:none;}
+  .cfu-done.show{display:block;animation:slide-in .3s ease;}
+  .section-title{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6a7da8;margin-bottom:8px;}
+  @media(max-width:600px){main{padding:14px 12px 40px;}.cell-wrap{width:28px;height:28px;}header{padding:12px 16px;}.mode-bar{padding:0 12px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div><h1>Natural Selection Simulator</h1><p>Biology 1 · Unit 6 · Lesson 113</p></div>
+</header>
+
+<div class="mode-bar">
+  <button class="mode-btn active" onclick="setMode('bacteria')" id="tab-bacteria">🦠 Bacteria + Penicillin</button>
+  <button class="mode-btn" onclick="setMode('insect')" id="tab-insect">🪲 Insects + Pesticide</button>
+</div>
+
+<main>
+  <div class="scenario" id="scenario-box"></div>
+  <div class="legend" id="legend-box"></div>
+
+  <div class="gen-card">
+    <div class="gen-header">
+      <div>
+        <div class="gen-label" id="gen-label">Generation 0</div>
+        <div class="gen-title" id="gen-title">Original population</div>
+      </div>
+      <div class="gen-stats" id="gen-stats"></div>
+    </div>
+    <div class="petri-outer" id="petri-outer">
+      <div class="phase-overlay" id="phase-overlay"></div>
+      <div class="petri-grid" id="petri-grid"></div>
+    </div>
+    <div class="freq-section">
+      <div class="freq-label" id="freq-label">Resistance allele frequency</div>
+      <div class="freq-bar-wrap">
+        <div class="freq-seg fr" id="freq-r"></div>
+        <div class="freq-seg fp" id="freq-p"></div>
+        <div class="freq-seg fs" id="freq-s" style="width:100%">susceptible</div>
+      </div>
+    </div>
+    <div class="insight" id="insight-box"></div>
+    <div class="controls">
+      <button class="btn btn-primary" id="action-btn" onclick="nextStep()"></button>
+      <button class="btn btn-reset" onclick="reset()">↺ Run Again</button>
+      <span class="step-note" id="step-note"></span>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">Data Table — results vary each run</div>
+    <div class="gen-card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="table-head">
+            <th>Generation</th><th>Total</th><th id="th2">🟢 Resistant</th>
+            <th id="th3">🟡 Partial</th><th id="th4">⚪ Susceptible</th><th id="th5">% Carrying resistance allele</th>
+          </tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="cfu-wrap" id="cfu-wrap">
+    <div class="cfu-title">✓ Simulation Complete — Check For Understanding</div>
+    <div class="cfu-sub">Answer all three questions to unlock "Run Again."</div>
+
+    <div class="cfu-q" id="cfu-q1">
+      <div class="cfu-q-label">CFU 1 of 3</div>
+      <div class="cfu-q-text">Even though some susceptible bacteria survived each round, resistance always won. Why?</div>
+      <div class="q-mc">
+        <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">A</span>Resistant bacteria are smarter and learn to avoid the antibiotic.</button>
+        <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">B</span>Susceptible bacteria eventually mutate during their lifetime to become resistant.</button>
+        <button class="q-opt" onclick="cfuMC(1,this,true)"><span class="q-opt-letter">C</span>Resistant bacteria survive and reproduce at a higher rate every generation — their allele accumulates faster than susceptible alleles can recover.</button>
+        <button class="q-opt" onclick="cfuMC(1,this,false)"><span class="q-opt-letter">D</span>The antibiotic gets weaker over time, making it easier for resistant bacteria to survive.</button>
+      </div>
+      <div class="q-fb" id="cfu-fb1"></div>
+    </div>
+
+    <div class="cfu-q" id="cfu-q2">
+      <div class="cfu-q-label">CFU 2 of 3</div>
+      <div class="cfu-q-text">What did you <em>see happen</em> in the simulation that you couldn't have understood just by reading about natural selection? Describe a specific moment. (Min. 20 characters.)</div>
+      <textarea class="q-sa" id="cfu-sa2" placeholder="I could see that..." oninput="cfuSACheck(2,20)"></textarea>
+      <button class="q-sa-btn" id="cfu-sub2" onclick="cfuSASubmit(2)" disabled>Submit →</button>
+      <div class="q-fb" id="cfu-fb2"></div>
+    </div>
+
+    <div class="cfu-q" id="cfu-q3">
+      <div class="cfu-q-label">CFU 3 of 3 — MRSA the Superbug</div>
+      <div class="cfu-q-text">MRSA is resistant to multiple antibiotics. How could MRSA have evolved resistance to so many different drugs?</div>
+      <div class="q-mc">
+        <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">A</span>MRSA bacteria decided to become resistant because they were exposed to many antibiotics at once.</button>
+        <button class="q-opt" onclick="cfuMC(3,this,true)"><span class="q-opt-letter">B</span>Each new antibiotic created a new selective pressure — bacteria with any resistance mutation survived and reproduced, and the same directional selection repeated for each drug over time.</button>
+        <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">C</span>MRSA inherited multi-drug resistance from other species through sexual reproduction.</button>
+        <button class="q-opt" onclick="cfuMC(3,this,false)"><span class="q-opt-letter">D</span>Doctors gave bacteria too many antibiotics at once, which forced them to become resistant to all simultaneously.</button>
+      </div>
+      <div class="q-fb" id="cfu-fb3"></div>
+    </div>
+
+    </div>
+
+    <div class="cfu-done" id="cfu-done">
+      🎉 <strong>All three answered.</strong> You've explained directional selection and connected it to MRSA. Click <strong>↺ Run Again</strong> to observe a different outcome with the same underlying biology.
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:13px;color:#a0d8c0;">📋 Last step — complete the reflection survey:</span>
+        <a href="https://forms.gle/YqQ8RNcXNRB71PwQ9" target="_blank" style="font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:10px 22px;border-radius:6px;background:var(--gold);color:var(--navy);text-decoration:none;flex-shrink:0;">Open Survey →</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ══ BIOLOGY ══════════════════════════════════════════
+// Phenotypes: 0=susceptible 1=partial 2=resistant
+// Susceptible: 80% killed, 20% survive unchanged
+// Partial:     33% killed, 33% survive unchanged, 33% upgraded to resistant
+// Resistant:   always survives
+// Binary fission: each survivor → 2 identical daughters
+// Population capped at ~30 via carrying capacity sampling
+const MAX_GENS = 6;
+const MAX_POP  = 60;
+
+// Survival rates per mode
+// Bacteria: binary fission, simple phenotype survival
+// Insects:  sexual reproduction, Punnett genetics
+// type 0 = rr (susceptible) | type 1 = Rr (heterozygous) | type 2 = RR (homozygous resistant)
+const SURVIVAL = {
+  bacteria: { s0: 0.80, s1kill: 0.33, s1stay: 0.67 }, // 80% susceptible die; partial 33/33/33
+  insect:   { s0: 0.80, s1: 0.20, s2: 0.00 },          // rr: 80% die; Rr: 20% die (dominant protection); RR: 0% die
+};
+
+function applyPressure(pop) {
+  const outcomes = new Map();
+  const survivors = [];
+  if (mode === 'bacteria') {
+    const sv = SURVIVAL.bacteria;
+    pop.forEach(cell => {
+      if (cell.type === 0) {
+        if (Math.random() < sv.s0) { outcomes.set(cell.id,'killed'); }
+        else { outcomes.set(cell.id,'survive'); survivors.push({type:0,id:cell.id}); }
+      } else if (cell.type === 1) {
+        const r = Math.random();
+        if      (r < sv.s1kill) { outcomes.set(cell.id,'killed'); }
+        else if (r < sv.s1stay) { outcomes.set(cell.id,'survive'); survivors.push({type:1,id:cell.id}); }
+        else                    { outcomes.set(cell.id,'upgraded'); survivors.push({type:2,id:cell.id}); }
+      } else {
+        outcomes.set(cell.id,'survive');
+        survivors.push({type:2,id:cell.id});
+      }
+    });
+  } else {
+    // Insects — survival by genotype (R dominant)
+    const sv = SURVIVAL.insect;
+    pop.forEach(cell => {
+      let killChance = cell.type===0 ? sv.s0 : cell.type===1 ? sv.s1 : sv.s2;
+      if (Math.random() < killChance) { outcomes.set(cell.id,'killed'); }
+      else { outcomes.set(cell.id,'survive'); survivors.push({type:cell.type,id:cell.id}); }
+    });
+  }
+  return {survivors,outcomes};
+}
+
+// Sexual reproduction for insects: Punnett square crossing
+// Each insect has genotype represented by type: 0=rr, 1=Rr, 2=RR
+function alleles(type) {
+  if (type===2) return ['R','R'];
+  if (type===1) return Math.random()<.5 ? ['R','r'] : ['r','R'];
+  return ['r','r'];
+}
+function cross(parentA, parentB) {
+  const [a1,a2]=alleles(parentA), [b1,b2]=alleles(parentB);
+  // Two offspring from one mating
+  const offspring = [];
+  for (let i=0;i<2;i++) {
+    const alleleA = Math.random()<.5 ? a1 : a2;
+    const alleleB = Math.random()<.5 ? b1 : b2;
+    const pair = [alleleA,alleleB].sort().join(''); // RR, Rr, rr
+    const type = pair==='RR'?2 : pair==='Rr'?1 : 0;
+    offspring.push(type);
+  }
+  return offspring;
+}
+
+function reproduce(survivors) {
+  if (mode === 'bacteria') {
+    // Binary fission — exact clones
+    const next = [];
+    survivors.forEach(c => { next.push({type:c.type,id:makeId()}); next.push({type:c.type,id:makeId()}); });
+    const TARGET = 28 + Math.floor(Math.random()*9);
+    if (next.length > TARGET) { next.sort(()=>Math.random()-.5); return next.slice(0,TARGET); }
+    return next;
+  } else {
+    // Sexual reproduction — random mating pairs
+    if (survivors.length < 2) return survivors.map(c=>({type:c.type,id:makeId()}));
+    const TARGET = 28 + Math.floor(Math.random()*9);
+    const next = [];
+    const shuffled = [...survivors].sort(()=>Math.random()-.5);
+    // Pair up survivors and cross them
+    for (let i=0; i<shuffled.length-1 && next.length<TARGET*2; i+=2) {
+      const offspring = cross(shuffled[i].type, shuffled[i+1].type);
+      offspring.forEach(t => next.push({type:t, id:makeId()}));
+    }
+    // If odd one out, self-pair last
+    if (shuffled.length%2===1 && next.length<TARGET) {
+      const last=shuffled[shuffled.length-1];
+      const offspring = cross(last.type, shuffled[0].type);
+      offspring.forEach(t => next.push({type:t, id:makeId()}));
+    }
+    if (next.length > TARGET) { next.sort(()=>Math.random()-.5); return next.slice(0,TARGET); }
+    return next;
+  }
+}
+
+// ══ SVG RENDERERS ════════════════════════════════════
+// Mode-aware: bacteria in bacteria mode, bugs in insect mode
+
+function cellColors(t) {
+  if (t===2) return {body:'#1D9E75',stroke:'#085041',dark:'#085041',light:'#1D9E75',dot:'#0a5c42'};
+  if (t===1) return {body:'#d97706',stroke:'#92560a',dark:'#92560a',light:'#fef3c7',dot:'#78450a'};
+  return            {body:'white',  stroke:'#1D9E75',dark:'#c8ece0',light:'#1D9E75', dot:'#a8dece'};
+}
+function bSeed(id){return(id*2654435761)>>>0;}
+
+function svgBacterium(t,id=0){
+  const c=cellColors(t),rot=bSeed(id)%360,pl=6+(bSeed(id)%4);
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})">
+    <g stroke="${c.stroke}" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".85">
+      <line x1="-14" y1="-5" x2="${-14-pl}" y2="-9"/><line x1="-14" y1="0" x2="${-14-pl}" y2="1"/>
+      <line x1="-14" y1="5" x2="${-14-pl}" y2="9"/><line x1="14" y1="-5" x2="${14+pl}" y2="-9"/>
+      <line x1="14" y1="0" x2="${14+pl}" y2="1"/><line x1="14" y1="5" x2="${14+pl}" y2="9"/>
+      <line x1="-4" y1="-9" x2="-5" y2="${-9-pl}"/><line x1="4" y1="-9" x2="5" y2="${-9-pl}"/>
+      <line x1="-4" y1="9" x2="-5" y2="${9+pl}"/><line x1="4" y1="9" x2="5" y2="${9+pl}"/>
+    </g>
+    <ellipse cx="0" cy="0" rx="14" ry="9" fill="${c.body}" stroke="${c.stroke}" stroke-width="1.8"/>
+    <ellipse cx="0" cy="0" rx="6" ry="4" fill="${c.dark}" opacity=".55"/>
+    <path d="M-5,0 Q-2.5,-2.5 0,0 Q2.5,2.5 5,0" stroke="${c.light}" stroke-width="1" fill="none" opacity=".9"/>
+    <circle cx="-8" cy="-3" r="1.4" fill="${c.dot}" opacity=".7"/>
+    <circle cx="8" cy="-3" r="1.4" fill="${c.dot}" opacity=".7"/>
+    <circle cx="-8" cy="3" r="1.4" fill="${c.dot}" opacity=".7"/>
+    <circle cx="8" cy="3" r="1.4" fill="${c.dot}" opacity=".7"/>
+  </g></svg>`;
+}
+
+function svgInsect(t,id=0){
+  // Top-down bug: oval abdomen, smaller head, 3 legs each side, antennae
+  const c=cellColors(t),rot=(bSeed(id)%60)-30; // small rotation so they're mostly upright
+  const str=c.stroke,fill=c.body,dark=c.dark;
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})">
+    <!-- Legs: 3 per side -->
+    <g stroke="${str}" stroke-width="1.3" stroke-linecap="round" fill="none" opacity=".9">
+      <line x1="-9" y1="-4" x2="-18" y2="-9"/>
+      <line x1="-10" y1="0"  x2="-19" y2="0"/>
+      <line x1="-9" y1="4"  x2="-18" y2="9"/>
+      <line x1="9"  y1="-4" x2="18"  y2="-9"/>
+      <line x1="10" y1="0"  x2="19"  y2="0"/>
+      <line x1="9"  y1="4"  x2="18"  y2="9"/>
+    </g>
+    <!-- Antennae -->
+    <g stroke="${str}" stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".85">
+      <line x1="-3" y1="-9" x2="-7"  y2="-16"/>
+      <line x1="3"  y1="-9" x2="7"   y2="-16"/>
+      <circle cx="-7" cy="-16" r="1.2" fill="${str}" opacity=".8"/>
+      <circle cx="7"  cy="-16" r="1.2" fill="${str}" opacity=".8"/>
+    </g>
+    <!-- Abdomen -->
+    <ellipse cx="0" cy="3" rx="10" ry="7" fill="${fill}" stroke="${str}" stroke-width="1.8"/>
+    <!-- Abdomen segments -->
+    <line x1="-9" y1="3" x2="9" y2="3" stroke="${str}" stroke-width=".8" opacity=".4"/>
+    <line x1="-9" y1="6" x2="9" y2="6" stroke="${str}" stroke-width=".8" opacity=".4"/>
+    <!-- Head -->
+    <ellipse cx="0" cy="-8" rx="6" ry="5" fill="${fill}" stroke="${str}" stroke-width="1.6"/>
+    <!-- Eyes -->
+    <circle cx="-3" cy="-9" r="1.5" fill="${dark}" opacity=".7"/>
+    <circle cx="3"  cy="-9" r="1.5" fill="${dark}" opacity=".7"/>
+    <!-- Wing outline (for resistant — solid fill implies full wings) -->
+    ${t===2?`<ellipse cx="0" cy="1" rx="11" ry="8" fill="none" stroke="${str}" stroke-width=".8" opacity=".3"/>`:''}
+  </g></svg>`;
+}
+
+function svgBacteriumDead(id=0){
+  const rot=bSeed(id)%360;
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})" opacity=".3">
+    <ellipse cx="0" cy="0" rx="14" ry="9" fill="none" stroke="#C0392B" stroke-width="1.8"/>
+    <line x1="-8" y1="-5" x2="8" y2="5" stroke="#C0392B" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="8" y1="-5" x2="-8" y2="5" stroke="#C0392B" stroke-width="2.2" stroke-linecap="round"/>
+  </g></svg>`;
+}
+
+function svgInsectDead(id=0){
+  // Bug on its back — legs in the air
+  const rot=(bSeed(id)%60)-30;
+  return `<svg viewBox="0 0 44 44" style="overflow:visible"><g transform="translate(22,22) rotate(${rot})" opacity=".3">
+    <!-- Legs sticking up -->
+    <g stroke="#C0392B" stroke-width="1.3" stroke-linecap="round" fill="none">
+      <line x1="-6" y1="-2" x2="-16" y2="-11"/>
+      <line x1="-7" y1="1"  x2="-17" y2="-4"/>
+      <line x1="-6" y1="4"  x2="-14" y2="11"/>
+      <line x1="6"  y1="-2" x2="16"  y2="-11"/>
+      <line x1="7"  y1="1"  x2="17"  y2="-4"/>
+      <line x1="6"  y1="4"  x2="14"  y2="11"/>
+    </g>
+    <ellipse cx="0" cy="3" rx="10" ry="7" fill="none" stroke="#C0392B" stroke-width="1.8"/>
+    <ellipse cx="0" cy="-8" rx="6" ry="5" fill="none" stroke="#C0392B" stroke-width="1.6"/>
+    <line x1="-6" y1="-6" x2="6" y2="0" stroke="#C0392B" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="6" y1="-6" x2="-6" y2="0" stroke="#C0392B" stroke-width="1.8" stroke-linecap="round"/>
+  </g></svg>`;
+}
+
+// Mode-aware wrappers used throughout
+function svgForType(t,id=0){ return mode==='insect' ? svgInsect(t,id) : svgBacterium(t,id); }
+function svgDead(id=0){ return mode==='insect' ? svgInsectDead(id) : svgBacteriumDead(id); }
+function svgSpan(t,sz=26){return `<span style="display:inline-block;width:${sz}px;height:${sz}px;vertical-align:middle;flex-shrink:0;">${svgForType(t)}</span>`;}
+
+// ══ STATE ════════════════════════════════════════════
+let mode='bacteria', step=0, animating=false, population=[], tableRows=[], idCounter=0;
+function makeId(){return ++idCounter;}
+
+function initPopulation(){
+  population=[];idCounter=0;
+  [{type:2},{type:1},{type:1}].forEach(c=>population.push({type:c.type,id:makeId()}));
+  const total=26+Math.floor(Math.random()*4);
+  for(let i=3;i<total;i++){const r=Math.random();population.push({type:r<.06?2:r<.20?1:0,id:makeId()});}
+  for(let i=population.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[population[i],population[j]]=[population[j],population[i]];}
+}
+
+// ══ RENDER ═══════════════════════════════════════════
+function renderPetri(pop,animIn=false){
+  const grid=document.getElementById('petri-grid');
+  grid.innerHTML='';
+  [...pop].sort(()=>Math.random()-.5).forEach((cell,i)=>{
+    const w=document.createElement('div');
+    w.className='cell-wrap'+(animIn?' anim-popin':'');
+    w.dataset.id=cell.id;
+    w.innerHTML=svgForType(cell.type,cell.id);
+    if(animIn)w.style.animationDelay=(i*15)+'ms';
+    grid.appendChild(w);
+  });
+}
+function counts(pop){const c={0:0,1:0,2:0};pop.forEach(x=>c[x.type]++);c.total=pop.length;return c;}
+function updateStats(pop){
+  const c=counts(pop);
+  if (mode==='insect') {
+    document.getElementById('gen-stats').innerHTML=`
+      <span class="stat-chip chip-r">${c[2]} RR</span>
+      <span class="stat-chip chip-p">${c[1]} Rr</span>
+      <span class="stat-chip chip-s">${c[0]} rr</span>
+      <span class="stat-chip chip-t">${c.total} total</span>`;
+  } else {
+    document.getElementById('gen-stats').innerHTML=`
+      <span class="stat-chip chip-r">${c[2]} resistant</span>
+      <span class="stat-chip chip-p">${c[1]} partial</span>
+      <span class="stat-chip chip-s">${c[0]} susceptible</span>
+      <span class="stat-chip chip-t">${c.total} total</span>`;
+  }
+}
+function updateFreq(pop){
+  if (mode==='bacteria') {
+    const c=counts(pop),t=c.total||1;
+    const pR=(c[2]/t*100).toFixed(0),pP=(c[1]/t*100).toFixed(0),pS=(c[0]/t*100).toFixed(0);
+    const r=document.getElementById('freq-r'),p=document.getElementById('freq-p'),s=document.getElementById('freq-s');
+    r.style.width=pR+'%';r.textContent=pR>8?pR+'% R':'';
+    p.style.width=pP+'%';p.textContent=pP>8?pP+'% P':'';
+    s.style.width=pS+'%';s.textContent=pS>8?pS+'% S':'';
+  } else {
+    // Insects — show R allele frequency vs r allele frequency
+    // Each individual has 2 alleles: RR=2R, Rr=1R+1r, rr=2r
+    let totalAlleles=0, rCount=0;
+    pop.forEach(cell=>{
+      totalAlleles+=2;
+      if(cell.type===2) rCount+=2;
+      else if(cell.type===1) rCount+=1;
+    });
+    const pR=totalAlleles?Math.round(rCount/totalAlleles*100):0;
+    const pr=100-pR;
+    const r=document.getElementById('freq-r'),p=document.getElementById('freq-p'),s=document.getElementById('freq-s');
+    r.style.width=pR+'%';r.textContent=pR>8?pR+'% R allele':'';
+    p.style.width='0%';p.textContent='';
+    s.style.width=pr+'%';s.textContent=pr>8?pr+'% r allele':'';
+  }
+}
+function setPhaseOverlay(cls,txt){
+  const ov=document.getElementById('phase-overlay');
+  ov.className='phase-overlay'+(cls?' '+cls:'');
+  ov.textContent=txt||'';
+}
+function updateHeader(gen,title){
+  document.getElementById('gen-label').textContent='Generation '+gen;
+  document.getElementById('gen-title').textContent=title;
+}
+function updateBtn(){
+  const btn=document.getElementById('action-btn'),m=MODES[mode];
+  if(step>=MAX_GENS){btn.textContent='✓ Complete';btn.disabled=true;}
+  else{btn.textContent=m.pressureName+' → Gen '+(step+1);btn.disabled=false;}
+  document.getElementById('step-note').textContent=
+    step<MAX_GENS?`Generation ${step} of ${MAX_GENS} — results vary each run`
+                 :`All ${MAX_GENS} generations complete — answer CFU below`;
+}
+function showInsight(genIdx){
+  const m=MODES[mode],box=document.getElementById('insight-box');
+  box.innerHTML=m.insights[Math.min(genIdx-1,m.insights.length-1)];
+  box.classList.add('show');
+}
+function hideInsight(){document.getElementById('insight-box').classList.remove('show');}
+function pushRow(gen,pop){
+  const c=counts(pop);
+  let pct;
+  if (mode==='insect') {
+    // R allele frequency
+    const totalAlleles=(c.total)*2, rAlleles=c[2]*2+c[1]*1;
+    pct=totalAlleles?Math.round(rAlleles/totalAlleles*100):0;
+  } else {
+    pct=Math.round((c[2]+c[1])/(c.total||1)*100);
+  }
+  tableRows.push({gen,c,total:c.total,pct,mode});rebuildTable();
+}
+function rebuildTable(){
+  const m=MODES[mode],tbody=document.getElementById('table-body');
+  tbody.innerHTML='';
+  for(let g=0;g<=MAX_GENS;g++){
+    const row=tableRows.find(r=>r.gen===g),isActive=row&&g===tableRows[tableRows.length-1].gen;
+    const tr=document.createElement('tr');
+    if(isActive)tr.className='row-active';
+    if(row){tr.innerHTML=`<td>${m.rowLabels[g]}</td><td>${row.total}</td><td>${row.c[2]}</td><td>${row.c[1]}</td><td>${row.c[0]}</td><td><span class="${row.pct>=50?'pct-hi':'pct-lo'}">${row.pct}%</span></td>`;}
+    else{tr.innerHTML=`<td>${m.rowLabels[g]}</td><td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td><td><span class="val-hidden">—</span></td>`;}
+    tbody.appendChild(tr);
+  }
+}
+
+// ══ ANIMATIONS ═══════════════════════════════════════
+async function animateSpray(){
+  const outer=document.getElementById('petri-outer'),dots=[];
+  for(let i=0;i<22;i++){
+    const d=document.createElement('div');d.className='spray-dot';
+    const sz=5+Math.random()*8;
+    d.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*90+2}%;top:${Math.random()*80+5}%;animation-delay:${Math.random()*350}ms;`;
+    outer.appendChild(d);dots.push(d);
+  }
+  await delay(600);dots.forEach(d=>d.remove());
+}
+async function animateKilling(outcomes){
+  const grid=document.getElementById('petri-grid'),wraps=[...grid.querySelectorAll('.cell-wrap')];
+  wraps.forEach(w=>{
+    const id=parseInt(w.dataset.id),o=outcomes.get(id);
+    if(o==='killed'){w.classList.add('anim-die');setTimeout(()=>{w.innerHTML=svgDead(id);},200);}
+    else if(o==='upgraded'){w.classList.add('anim-upgrade');setTimeout(()=>{w.innerHTML=svgForType(2,id);},200);}
+  });
+  await delay(750);
+  wraps.forEach(w=>{if(outcomes.get(parseInt(w.dataset.id))==='killed')w.remove();else w.classList.remove('anim-die','anim-upgrade');});
+}
+async function animateMitosis(survivors){
+  const grid=document.getElementById('petri-grid'),outer=document.getElementById('petri-outer');
+  const outerR=outer.getBoundingClientRect(),newPop=[],wraps=[...grid.querySelectorAll('.cell-wrap')];
+  for(let i=0;i<wraps.length;i+=4){
+    const batch=wraps.slice(i,i+4);
+    await Promise.all(batch.map(async(wrap,bi)=>{
+      const id=parseInt(wrap.dataset.id),parent=survivors.find(c=>c.id===id);
+      if(!parent)return;
+      const wr=wrap.getBoundingClientRect(),cx=wr.left-outerR.left+wr.width/2,cy=wr.top-outerR.top+wr.height/2;
+      wrap.classList.add('anim-prediv');await delay(300);
+      const angle=Math.random()*Math.PI*2,dist=24+Math.random()*18;
+      for(let d=0;d<2;d++){
+        const did=makeId();newPop.push({type:parent.type,id:did});
+        const dir=d===0?1:-1,tx=Math.cos(angle)*dist*dir,ty=Math.sin(angle)*dist*dir;
+        const dEl=document.createElement('div');dEl.className='daughter';
+        dEl.style.left=(cx-22)+'px';dEl.style.top=(cy-22)+'px';
+        dEl.style.setProperty('--tx',tx+'px');dEl.style.setProperty('--ty',ty+'px');
+        dEl.innerHTML=svgForType(parent.type,did);outer.appendChild(dEl);
+        await delay(d*25);dEl.classList.add('fly');
+      }
+      await delay(680);wrap.remove();outer.querySelectorAll('.daughter').forEach(d=>d.remove());
+    }));
+    if(i+4<wraps.length)await delay(100);
+  }
+  return newPop;
+}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ══ MAIN STEP ════════════════════════════════════════
+async function nextStep(){
+  if(animating||step>=MAX_GENS)return;
+  animating=true;hideInsight();
+  document.getElementById('action-btn').disabled=true;
+  const m=MODES[mode];
+  setPhaseOverlay('killing',`Applying ${m.pressureName}...`);
+  updateHeader(step,`Gen ${step}: ${m.pressureName} applied`);
+  await animateSpray();
+  const{survivors,outcomes}=applyPressure(population);
+  await animateKilling(outcomes);
+  updateStats(survivors);updateFreq(survivors);
+  setPhaseOverlay('','');await delay(350);
+  setPhaseOverlay('dividing', mode==='insect' ? 'Sexual reproduction — random mating + Punnett crossing' : 'Binary fission — each cell divides into 2 daughters');
+  updateHeader(step,`Gen ${step}: Survivors reproducing`);
+  const nextPop=await animateMitosis(survivors);
+  setPhaseOverlay('','');
+  step++;population=nextPop;
+  renderPetri(population,true);updateStats(population);updateFreq(population);
+  updateHeader(step,m.genTitles[step]);
+  pushRow(step,population);updateBtn();showInsight(step);
+  if(step>=MAX_GENS){
+    await delay(400);
+    document.getElementById('cfu-wrap').classList.add('show');
+    setTimeout(()=>document.getElementById('cfu-wrap').scrollIntoView({behavior:'smooth',block:'start'}),300);
+  }
+  animating=false;
+}
+
+// ══ RESET / MODE ═════════════════════════════════════
+function reset(){
+  if(animating)return;
+  step=0;tableRows=[];animating=false;
+  hideInsight();setPhaseOverlay('','');
+  document.getElementById('cfu-wrap').classList.remove('show');
+  document.getElementById('cfu-done').classList.remove('show');
+  [1,2,3].forEach(n=>{
+    const q=document.getElementById(`cfu-q${n}`);if(q)q.classList.remove('answered');
+    const fb=document.getElementById(`cfu-fb${n}`);if(fb){fb.className='q-fb';fb.innerHTML='';}
+  });
+  document.querySelectorAll('.cfu-wrap .q-opt').forEach(o=>{o.disabled=false;o.classList.remove('correct','wrong');});
+  [2].forEach(n=>{
+    const ta=document.getElementById(`cfu-sa${n}`);if(ta){ta.value='';ta.disabled=false;}
+    const btn=document.getElementById(`cfu-sub${n}`);if(btn)btn.disabled=true;
+  });
+  cfuState={1:false,2:false,3:false};
+  document.getElementById('petri-outer').querySelectorAll('.daughter,.spray-dot').forEach(e=>e.remove());
+  initPopulation();renderPetri(population);updateStats(population);updateFreq(population);
+  updateHeader(0,MODES[mode].genTitles[0]);pushRow(0,population);updateBtn();
+}
+function setMode(m){
+  if(animating)return;
+  mode=m;
+  document.getElementById('tab-bacteria').classList.toggle('active',m==='bacteria');
+  document.getElementById('tab-insect').classList.toggle('active',m==='insect');
+  document.getElementById('scenario-box').innerHTML=MODES[m].scenario;
+  const sv = SURVIVAL[m];
+  const killPct = Math.round(sv.s0 * 100);
+  const survivePct = 100 - killPct;
+
+  if (m==='insect') {
+    document.getElementById('freq-label').textContent = 'R allele frequency vs r allele frequency (population genetics)';
+    document.getElementById('th2').textContent = '🟢 RR (homozygous)';
+    document.getElementById('th3').textContent = '🟡 Rr (heterozygous)';
+    document.getElementById('th4').textContent = '⚪ rr (susceptible)';
+    document.getElementById('th5').textContent = 'R allele frequency';
+    document.getElementById('legend-box').innerHTML=`
+      <span class="legend-title">Key:</span>
+      <span class="legend-item">${svgSpan(2)} RR — homozygous resistant · 100% survive · passes R to all offspring</span>
+      <span class="legend-item">${svgSpan(1)} Rr — heterozygous · 80% survive (R dominant) · passes R or r randomly</span>
+      <span class="legend-item">${svgSpan(0)} rr — susceptible · ${killPct}% killed · ${survivePct}% survive by chance</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:4px;">Mating: random pairs · Punnett square crossing each generation</span>`;
+  } else {
+    document.getElementById('freq-label').textContent = 'Resistance allele frequency';
+    document.getElementById('th2').textContent = '🟢 Resistant';
+    document.getElementById('th3').textContent = '🟡 Partial';
+    document.getElementById('th4').textContent = '⚪ Susceptible';
+    document.getElementById('th5').textContent = '% Carrying resistance allele';
+    document.getElementById('legend-box').innerHTML=`
+      <span class="legend-title">Key:</span>
+      <span class="legend-item">${svgSpan(2)} Resistant — 100% survive, offspring inherit resistance</span>
+      <span class="legend-item">${svgSpan(1)} Partial — 33% killed · 33% survive · 33% upgraded</span>
+      <span class="legend-item">${svgSpan(0)} Susceptible — ${killPct}% killed · ${survivePct}% survive by chance</span>`;
+  }
+  document.getElementById('cfu-wrap').classList.remove('show');
+  reset();
+}
+
+// ══ CFU ══════════════════════════════════════════════
+let cfuState={1:false,2:false,3:false};
+function cfuMC(n,btn,correct){
+  if(cfuState[n])return;
+  const opts=btn.closest('.q-mc').querySelectorAll('.q-opt'),fb=document.getElementById(`cfu-fb${n}`);
+  opts.forEach(o=>o.disabled=true);
+  if(correct){
+    btn.classList.add('correct');fb.className='q-fb show good';
+    if(n===1)fb.innerHTML='✓ Correct. Resistant bacteria keep 100% of offspring every generation; susceptible keep only 20%. That fitness gap compounds over 6 generations — resistance always accumulates faster. Directional natural selection.';
+    if(n===3)fb.innerHTML='✓ Correct. Each new antibiotic is a new selective pressure. The bacteria with any resistance mutation survived, reproduced, and the same directional selection repeated for each drug — just like what you watched happen in the simulation.';
+  } else {
+    btn.classList.add('wrong');
+    opts.forEach(o=>{if(o.getAttribute('onclick').includes(',true)'))o.classList.add('correct');});
+    fb.className='q-fb show hint';
+    if(n===1)fb.innerHTML='💡 Think about compounding fitness: resistant bacteria keep all offspring every round, susceptible keep only 20%. Over 6 generations that gap becomes enormous. Correct answer highlighted above.';
+    if(n===3)fb.innerHTML='💡 The simulation showed you: even 1% surviving is enough to restart the cycle. Each antibiotic = new selective pressure, same mechanism. Correct answer highlighted above.';
+  }
+  cfuState[n]=true;document.getElementById(`cfu-q${n}`).classList.add('answered');checkCFUDone();
+}
+function cfuSACheck(n,min){
+  const ta=document.getElementById(`cfu-sa${n}`),btn=document.getElementById(`cfu-sub${n}`);
+  btn.disabled=ta.value.trim().length<min;
+}
+function cfuSASubmit(n){
+  if(cfuState[n])return;
+  const ta=document.getElementById(`cfu-sa${n}`),btn=document.getElementById(`cfu-sub${n}`),fb=document.getElementById(`cfu-fb${n}`);
+  ta.disabled=true;btn.disabled=true;fb.className='q-fb show good';
+  if(n===2)fb.innerHTML='✓ Saved. Describing what you observed — not just what you read — is exactly how scientists build mechanistic understanding.';
+  if(n===4)fb.innerHTML='✓ Saved. Real strategies include: antibiotic rotation (no single drug = no consistent selection pressure), antibiotic stewardship (less use = less pressure), phage therapy, and combination therapy (requiring two simultaneous resistance mutations, which is very unlikely).';
+  cfuState[n]=true;document.getElementById(`cfu-q${n}`).classList.add('answered');checkCFUDone();
+}
+function checkCFUDone(){
+  if(cfuState[1]&&cfuState[2]&&cfuState[3]){
+    document.getElementById('cfu-done').classList.add('show');
+  }
+}
+
+// ══ MODE DATA ════════════════════════════════════════
+const MODES={
+  bacteria:{
+    scenario:`<strong>Scenario 3 — Penicillin Resistance in <em>Staphylococcus aureus</em></strong><br>
+It is 1945. Penicillin has just entered widespread clinical use. Most <em>Staphylococcus</em> bacteria are fully susceptible. A few carry one resistance allele (partial). A rare number carry two (full resistance). Penicillin is applied each generation — but 20% of susceptible bacteria survive by chance each round. Results vary each run!`,
+    pressureName:'Apply Penicillin',
+    genTitles:['Original population — before penicillin','After 1st penicillin treatment','After 2nd penicillin treatment','After 3rd penicillin treatment','After 4th penicillin treatment','After 5th penicillin treatment','After 6th penicillin treatment'],
+    rowLabels:['Gen 0 — before treatment','Gen 1 — after 1st treatment','Gen 2 — after 2nd treatment','Gen 3 — after 3rd treatment','Gen 4 — after 4th treatment','Gen 5 — after 5th treatment','Gen 6 — after 6th treatment'],
+    insights:[
+      `<strong>Gen 1:</strong> Penicillin killed ~80% of susceptible bacteria — 20% survived by chance. Partial bacteria: 33% killed, 33% stayed partial, 33% upgraded to resistant. Notice amber cells may still be present — they persist longer than susceptible ones.`,
+      `<strong>Gen 2:</strong> Each survivor divided into two identical daughter cells (binary fission). Partial cells that survived produced partial daughters — still facing 33% kill rate next round, but also a 33% chance to upgrade. Watch amber cells gradually convert to green.`,
+      `<strong>Gen 3:</strong> Three populations may still coexist. Susceptible (white) are depleting at 80%/gen. Partial (amber) are slowly upgrading. Resistant (green) accumulate with every generation — they never die. The allele frequency bar shows this shift.`,
+      `<strong>Gen 4:</strong> Partial cells are acting as a stepping stone — each round a third upgrade to fully resistant. Susceptible bacteria should be very rare now. The fitness gap between resistant (100% survival) and susceptible (20% survival) is compounding fast.`,
+      `<strong>Gen 5:</strong> The population is converging on full resistance. Even the few susceptible survivors keep losing 80% of their offspring every round — they can never accumulate. Resistant bacteria lose none.`,
+      `<strong>Gen 6:</strong> <strong>Directional selection is complete.</strong> The resistance allele now dominates — exactly what happened to <em>Staphylococcus aureus</em> between 1945 and 1965. Run it again — the exact numbers vary, but resistance always wins.`,
+    ],
+  },
+  insect:{
+    scenario:`<strong>Monitor Round 2 — Pesticide Resistance in an Insect Population</strong><br>
+A farmer applies pesticide each generation. The resistance allele <strong>R</strong> is dominant — insects with even one copy (Rr) are largely protected. Susceptible insects are homozygous recessive (rr). Survivors mate randomly each generation — offspring genotype is determined by <strong>Punnett square crossing</strong>, not cloning. Watch how R allele frequency changes across 6 generations.`,
+    pressureName:'Apply Pesticide',
+    genTitles:['Original population — before pesticide','After 1st pesticide spray','After 2nd pesticide spray','After 3rd pesticide spray','After 4th pesticide spray','After 5th pesticide spray','After 6th pesticide spray'],
+    rowLabels:['Gen 0 — before pesticide','Gen 1 — after 1st spray','Gen 2 — after 2nd spray','Gen 3 — after 3rd spray','Gen 4 — after 4th spray','Gen 5 — after 5th spray','Gen 6 — after 6th spray'],
+    insights:[
+      `<strong>Gen 1:</strong> Pesticide killed 80% of rr (susceptible) insects. Rr heterozygotes survived at 80% — resistance is dominant, so one R allele provides strong protection. RR insects survived completely. Watch the R allele frequency bar shift right.`,
+      `<strong>Gen 2:</strong> Surviving insects mated randomly. Each parent passes one allele — R or r. An RR parent always passes R. An Rr parent passes R half the time, r half the time. This is Mendelian inheritance — do a Punnett square in your head: Rr × Rr gives 25% RR, 50% Rr, 25% rr.`,
+      `<strong>Gen 3:</strong> The bar shows R allele frequency — the proportion of R alleles across the entire gene pool. Even Rr insects contribute R alleles to the next generation. Notice rr offspring can still appear from two Rr parents — but those rr offspring face 80% mortality next round.`,
+      `<strong>Gen 4:</strong> The r allele is being steadily removed from the gene pool by selection. Rr insects survive well but still pass r alleles to half their offspring, maintaining some variation. This is slower than bacteria — sexual reproduction shuffles alleles every generation.`,
+      `<strong>Gen 5:</strong> The population is converging toward R allele dominance. Compare the speed to the bacteria simulation — sexual reproduction keeps heterozygotes (Rr) in the population longer, slowing the sweep.`,
+      `<strong>Gen 6:</strong> <strong>Directional selection is nearly complete.</strong> The R allele dominates the gene pool. The pesticide acted as selective pressure — R allele carriers had higher fitness — and R allele frequency increased through differential reproduction. This is evolution at the population genetics level.`,
+    ],
+  },
+};
+
+// ══ INIT ═════════════════════════════════════════════
+setMode('bacteria');
+</script>
+</body>
+</html>
